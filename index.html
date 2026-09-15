@@ -3177,7 +3177,7 @@
         // Envoi d'email via Edge Function Supabase (fiable)
         async function sendEmailViaFunction(to, subject, html) {
             try {
-                const response = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/clever-handler`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
