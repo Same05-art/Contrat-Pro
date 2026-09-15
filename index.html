@@ -1,0 +1,3088 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECOM ACADEMY PRO - Générateur de contrats pour closeuses e-commerce</title>
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Cinzel:wght@600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Libraries CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary: #0f172a;
+            --primary-hover: #020617;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --accent-light: #eff6ff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius-sm: 6px;
+            --radius: 10px;
+            --radius-lg: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* App Layout */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background-color: var(--primary);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .brand-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .brand-logo-text {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo-text i {
+            color: #3b82f6;
+        }
+
+        .brand-subtitle {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-menu {
+            padding: 20px 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #94a3b8;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: #ffffff;
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .nav-item.active {
+            background-color: var(--accent);
+        }
+
+        .nav-item i {
+            font-size: 16px;
+            width: 20px;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 11px;
+            color: #64748b;
+            text-align: center;
+        }
+
+        .sidebar-footer span {
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        .top-navbar {
+            height: 64px;
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+        }
+
+        .top-navbar-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background-color: white;
+            border-color: var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background-color: #f1f5f9;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            opacity: 0.9;
+        }
+
+        .btn-danger {
+            background-color: #fef2f2;
+            color: var(--danger);
+            border-color: #fecaca;
+        }
+
+        .btn-danger:hover {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .content-area {
+            padding: 32px;
+            flex: 1;
+        }
+
+        /* View Containers */
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Dashboard View */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-icon.blue { background-color: #dbeafe; color: var(--accent); }
+        .stat-icon.green { background-color: #d1fae5; color: var(--success); }
+        .stat-icon.yellow { background-color: #fef3c7; color: var(--warning); }
+        .stat-icon.purple { background-color: #f3e8ff; color: #9333ea; }
+
+        .stat-info h4 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-info p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* Table Design */
+        .table-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .data-table th {
+            background-color: #f8fafc;
+            padding: 14px 20px;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-signed { background-color: #d1fae5; color: #065f46; }
+        .badge-pending { background-color: #fef3c7; color: #92400e; }
+
+        /* Wizard Generator Form */
+        .wizard-header {
+            margin-bottom: 24px;
+        }
+
+        .progress-bar-container {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin-bottom: 32px;
+        }
+
+        .progress-bar-container::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--border);
+            z-index: 1;
+            transform: translateY(-50%);
+        }
+
+        .progress-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            height: 2px;
+            background-color: var(--accent);
+            z-index: 1;
+            transform: translateY(-50%);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .step-item {
+            position: relative;
+            z-index: 2;
+            background-color: var(--bg-main);
+            padding: 0 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .step-bubble {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: white;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+
+        .step-item.active .step-bubble {
+            border-color: var(--accent);
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .step-item.completed .step-bubble {
+            border-color: var(--success);
+            background-color: var(--success);
+            color: white;
+        }
+
+        .step-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .step-item.active .step-label {
+            color: var(--accent);
+        }
+
+        /* Split Screen Generator */
+        .generator-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .form-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .form-section-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-main);
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            background-color: white;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            background: #f8fafc;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
+        }
+
+        /* Real-time Document Paper Preview */
+        .preview-container {
+            position: sticky;
+            top: 24px;
+            background-color: #525659;
+            border-radius: var(--radius);
+            padding: 20px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .document-paper {
+            background-color: white;
+            padding: 40px;
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            color: #111827;
+            font-family: 'Liberation Serif', 'Times New Roman', Times, serif;
+            font-size: 13px;
+            line-height: 1.6;
+            min-height: 700px;
+        }
+
+        .doc-header-top {
+            text-align: center;
+            border-bottom: 2px solid #111827;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+
+        .doc-main-title {
+            font-family: 'Cinzel', serif;
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: 1px;
+        }
+
+        .doc-app-name {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: #2563eb;
+            margin-top: 4px;
+        }
+
+        .doc-sub-header {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 16px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .doc-table-info {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+
+        .doc-table-info th {
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 6px 10px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .doc-table-info td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+
+        .doc-section-title {
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-top: 16px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 3px;
+            color: #0f172a;
+        }
+
+        .doc-signatures {
+            margin-top: 36px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            page-break-inside: avoid;
+        }
+
+        .signature-box {
+            border: 1px dashed #cbd5e1;
+            padding: 12px;
+            min-height: 110px;
+            border-radius: var(--radius-sm);
+            background-color: #fafafa;
+        }
+
+        .signature-img {
+            max-height: 50px;
+            display: block;
+            margin-top: 8px;
+        }
+
+        /* Clauses Dynamic List */
+        .clause-item {
+            background-color: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .clause-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background-color: white;
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 500px;
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .canvas-container {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background-color: #fafafa;
+            margin: 12px 0;
+        }
+
+        canvas {
+            width: 100%;
+            height: 150px;
+            cursor: crosshair;
+        }
+
+        /* Legal Disclaimer */
+        .legal-notice {
+            font-size: 11px;
+            color: var(--text-muted);
+            background-color: #fffbe0;
+            border: 1px solid #fef3c7;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            margin-top: 20px;
+        }
+
+        /* Responsive Mobile Toggles */
+        .mobile-view-toggle {
+            display: none;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 1024px) {
+            .generator-layout {
+                grid-template-columns: 1fr;
+            }
+            .preview-container {
+                position: static;
+                max-height: none;
+            }
+            .mobile-view-toggle {
+                display: flex;
+                gap: 10px;
+            }
+            .sidebar {
+                width: 70px;
+            }
+            .brand-subtitle, .sidebar-footer, .nav-item span {
+                display: none;
+            }
+            .brand-logo-text {
+                justify-content: center;
+            }
+            .nav-item {
+                justify-content: center;
+                padding: 12px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .top-navbar {
+                padding: 0 16px;
+            }
+            .content-area {
+                padding: 16px;
+            }
+            .progress-bar-container {
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand-header">
+                <div class="brand-logo-text">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>ECOM ACADEMY PRO</span>
+                </div>
+                <div class="brand-subtitle">Générateur de Contrats Closeuses</div>
+            </div>
+
+            <nav class="nav-menu">
+                <a class="nav-item active" onclick="switchView('dashboardView')">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Tableau de bord</span>
+                </a>
+                <a class="nav-item" onclick="startNewContract()">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span>Nouveau contrat</span>
+                </a>
+                <a class="nav-item" onclick="switchView('contractsView')">
+                    <i class="fa-solid fa-folder-open"></i>
+                    <span>Mes contrats</span>
+                </a>
+                <a class="nav-item" onclick="switchView('modelsView')">
+                    <i class="fa-solid fa-bookmark"></i>
+                    <span>Mes modèles</span>
+                </a>
+                <a class="nav-item" onclick="switchView('companyView')">
+                    <i class="fa-solid fa-building"></i>
+                    <span>Mon Entreprise</span>
+                </a>
+                <a class="nav-item" onclick="switchView('settingsView')">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Paramètres</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                Créé par <span>Junior GANGNIHESSOU</span>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-wrapper">
+            <header class="top-navbar">
+                <h1 class="top-navbar-title" id="pageTitle">Tableau de bord</h1>
+                <div class="top-actions">
+                    <button class="btn btn-primary" onclick="startNewContract()">
+                        <i class="fa-solid fa-plus"></i> Nouveau Contrat
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-area">
+
+                <!-- 1. DASHBOARD VIEW -->
+                <section id="dashboardView" class="view-section active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon blue"><i class="fa-solid fa-file-signature"></i></div>
+                            <div class="stat-info">
+                                <h4 id="statTotal">0</h4>
+                                <p>Total Contrats</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green"><i class="fa-solid fa-calendar-day"></i></div>
+                            <div class="stat-info">
+                                <h4 id="statToday">0</h4>
+                                <p>Générés aujourd'hui</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon yellow"><i class="fa-solid fa-clock"></i></div>
+                            <div class="stat-info">
+                                <h4 id="statPending">0</h4>
+                                <p>En attente signature</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple"><i class="fa-solid fa-check-double"></i></div>
+                            <div class="stat-info">
+                                <h4 id="statSigned">0</h4>
+                                <p>Contrats signés</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-header">
+                        <h2 class="section-title">Contrats récents</h2>
+                        <button class="btn btn-secondary btn-sm" onclick="switchView('contractsView')">Voir tout</button>
+                    </div>
+
+                    <div class="table-card">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>N° Contrat</th>
+                                    <th>Closeuse</th>
+                                    <th>Date de création</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentContractsTable">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 2. GENERATOR WIZARD VIEW -->
+                <section id="generatorView" class="view-section">
+                    <div class="wizard-header">
+                        <div class="progress-bar-container">
+                            <div class="progress-line" id="progressLine"></div>
+                            <div class="step-item active" id="stepBubble1">
+                                <div class="step-bubble">1</div>
+                                <div class="step-label">Entreprise</div>
+                            </div>
+                            <div class="step-item" id="stepBubble2">
+                                <div class="step-bubble">2</div>
+                                <div class="step-label">Closeuse</div>
+                            </div>
+                            <div class="step-item" id="stepBubble3">
+                                <div class="step-bubble">3</div>
+                                <div class="step-label">Collaboration</div>
+                            </div>
+                            <div class="step-item" id="stepBubble4">
+                                <div class="step-bubble">4</div>
+                                <div class="step-label">Missions</div>
+                            </div>
+                            <div class="step-item" id="stepBubble5">
+                                <div class="step-bubble">5</div>
+                                <div class="step-label">Clauses</div>
+                            </div>
+                            <div class="step-item" id="stepBubble6">
+                                <div class="step-bubble">6</div>
+                                <div class="step-label">Finalisation</div>
+                            </div>
+                        </div>
+
+                        <!-- Language Selector for Contract -->
+                        <div style="display:flex; align-items:center; gap:12px; margin-top:16px; justify-content:flex-end;">
+                            <label style="font-size:13px; font-weight:600; color:var(--text-muted); margin:0;">
+                                <i class="fa-solid fa-language"></i> Langue du contrat :
+                            </label>
+                            <select id="contractLang" onchange="changeContractLanguage(this.value)" style="padding:8px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:13px; font-weight:600; background:white; cursor:pointer; min-width:240px;">
+                                <optgroup label="Langues internationales">
+                                    <option value="fr" selected>🇫🇷 Français</option>
+                                    <option value="en">🇬🇧 English</option>
+                                    <option value="es">🇪🇸 Español</option>
+                                    <option value="pt">🇵🇹 Português</option>
+                                    <option value="ar">🇲🇷 العربية (Arabe)</option>
+                                </optgroup>
+                                <optgroup label="Langues africaines (Afrique de l'Ouest)">
+                                    <option value="kri">🇸🇱 Krio (Sierra Leone)</option>
+                                    <option value="pov">🇬🇼 Crioulo (Guinée-Bissau)</option>
+                                    <option value="wo">🇸🇳 Wolof</option>
+                                    <option value="ha">🇳🇬 Hausa</option>
+                                    <option value="yo">🇳🇬 Yoruba</option>
+                                    <option value="ig">🇳🇬 Igbo</option>
+                                    <option value="ff">Fulfulde (Peul)</option>
+                                    <option value="bm">🇲🇱 Bambara</option>
+                                </optgroup>
+                                <optgroup label="Autres langues africaines">
+                                    <option value="sw">🇹🇿 Kiswahili</option>
+                                    <option value="am">🇪🇹 አማርኛ (Amharique)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mobile-view-toggle">
+                        <button class="btn btn-secondary" style="flex:1" onclick="toggleMobileView('form')">Formulaire</button>
+                        <button class="btn btn-secondary" style="flex:1" onclick="toggleMobileView('preview')">Aperçu Contrat</button>
+                    </div>
+
+                    <div class="generator-layout">
+                        <!-- Form Area -->
+                        <div class="form-card" id="formSide">
+                            <form id="contractForm" onsubmit="event.preventDefault();">
+                                
+                                <!-- Step 1: Entreprise -->
+                                <div class="wizard-step-content" id="step1">
+                                    <h3 class="form-section-title"><i class="fa-solid fa-building"></i> Informations de l'Entreprise</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Nom de l'entreprise *</label>
+                                            <input type="text" id="compName" value="ECOM ACADEMY PRO" required oninput="updatePreview()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Nom commercial</label>
+                                            <input type="text" id="compTradeName" value="Ecom Academy Pro" oninput="updatePreview()">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Nom du responsable *</label>
+                                            <input type="text" id="compOwner" value="Junior GANGNIHESSOU" required oninput="updatePreview()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Fonction du responsable</label>
+                                            <input type="text" id="compOwnerRole" value="Fondateur / CEO" oninput="updatePreview()">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Adresse complète</label>
+                                        <input type="text" id="compAddress" value="Cotonou, Bénin" oninput="updatePreview()">
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Ville</label>
+                                            <input type="text" id="compCity" value="Cotonou" oninput="updatePreview()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Pays</label>
+                                            <input type="text" id="compCountry" value="Bénin" oninput="updatePreview()">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Téléphone</label>
+                                            <input type="tel" id="compPhone" oninput="updatePreview()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Email de l'expéditeur * <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(recevra le contrat signé)</span></label>
+                                            <input type="email" id="compEmail" required placeholder="ex: contact@ecomacademy.pro" oninput="updatePreview()">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Logo de l'entreprise</label>
+                                        <input type="file" id="compLogoInput" accept="image/*" onchange="handleLogoUpload(event)">
+                                    </div>
+                                </div>
+
+                                <!-- Step 2: Closeuse -->
+                                <div class="wizard-step-content" id="step2" style="display:none;">
+                                    <h3 class="form-section-title"><i class="fa-solid fa-user-tag"></i> Informations de la Closeuse</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Nom *</label>
+                                            <input type="text" id="closeuseLastName" required oninput="updatePreview()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Prénom *</label>
+                                            <input type="text" id="closeuseFirstName" required oninput="updatePreview()">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Téléphone *</label>
+                                            <input type="tel" id="closeusePhone" required oninput="updatePreview()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Email du destinataire * <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(recevra le lien de signature)</span></label>
+                                            <input type="email" id="closeuseEmail" required placeholder="ex: closeuse@email.com" oninput="updatePreview()">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Adresse complète</label>
+                                        <input type="text" id="closeuseAddress" placeholder="Cotonou, Bénin..." oninput="updatePreview()">
+                                    </div>
+                                </div>
+
+                                <!-- Step 3: Collaboration & Rémunération par Commission -->
+                                <div class="wizard-step-content" id="step3" style="display:none;">
+                                    <h3 class="form-section-title"><i class="fa-solid fa-handshake"></i> Rémunération par Commission sur Vente</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Date de début</label>
+                                            <input type="date" id="startDate" value="2026-09-06" oninput="updatePreview()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Date de fin</label>
+                                            <input type="date" id="endDate" value="2026-12-20" oninput="updatePreview()">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Commission par produit livré (FCFA / €) *</label>
+                                            <input type="text" id="commAmount" value="2 000 FCFA" placeholder="Ex: 2 000 FCFA par produit livré" required oninput="updatePreview()">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Condition de déclenchement</label>
+                                            <input type="text" id="commCondition" value="Produit effectivement livré et encaissé par le livreur" oninput="updatePreview()">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Fréquence de paiement</label>
+                                            <select id="payFreq" onchange="updatePreview()">
+                                                <option value="Hebdomadaire">Chaque semaine</option>
+                                                <option value="Bi-mensuelle">Toutes les deux semaines</option>
+                                                <option value="Mensuelle">Chaque mois</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Mode de paiement</label>
+                                            <input type="text" id="payMethod" value="Mobile Money (MTN / Moov) / Virement" oninput="updatePreview()">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 4: Missions de Confirmation & Livreur -->
+                                <div class="wizard-step-content" id="step4" style="display:none;">
+                                    <h3 class="form-section-title"><i class="fa-solid fa-list-check"></i> Missions de la Closeuse</h3>
+                                    <div class="checkbox-group">
+                                        <label class="checkbox-item"><input type="checkbox" class="mission-cb" value="Contacter les prospects/clients pour confirmer leurs commandes." checked onchange="updatePreview()"> Confirmer les commandes</label>
+                                        <label class="checkbox-item"><input type="checkbox" class="mission-cb" value="Transmettre les informations nécessaires au livreur pour assurer la livraison." checked onchange="updatePreview()"> Redirection vers le livreur</label>
+                                        <label class="checkbox-item"><input type="checkbox" class="mission-cb" value="Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition." checked onchange="updatePreview()"> Suivi Google Sheet / App</label>
+                                        <label class="checkbox-item"><input type="checkbox" class="mission-cb" value="Relancer les prospects indécis pour maximiser le taux de confirmation." checked onchange="updatePreview()"> Relance des prospects</label>
+                                    </div>
+                                    <div class="form-group" style="margin-top:16px;">
+                                        <label>Missions complémentaires</label>
+                                        <textarea id="customMissions" rows="2" placeholder="Ajouter d'autres missions spécifiques..." oninput="updatePreview()"></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Step 5: Confidentialité & Clauses -->
+                                <div class="wizard-step-content" id="step5" style="display:none;">
+                                    <h3 class="form-section-title"><i class="fa-solid fa-user-shield"></i> Confidentialité & Obligations</h3>
+                                    <div class="checkbox-group">
+                                        <label class="checkbox-item"><input type="checkbox" class="clause-cb" value="Garantir la protection des données clients." checked onchange="updatePreview()"> Protection données clients</label>
+                                        <label class="checkbox-item"><input type="checkbox" class="clause-cb" value="Ne pas divulguer les informations confidentielles de l'Entreprise." checked onchange="updatePreview()"> Non-divulgation</label>
+                                        <label class="checkbox-item"><input type="checkbox" class="clause-cb" value="Respecter l'image et la réputation de l'Entreprise dans toutes ses communications." checked onchange="updatePreview()"> Respect image de marque</label>
+                                    </div>
+
+                                    <h3 class="form-section-title" style="margin-top:24px;"><i class="fa-solid fa-plus-circle"></i> Clauses Sur-Mesure</h3>
+                                    <div id="customClausesContainer"></div>
+                                    <button class="btn btn-secondary btn-sm" onclick="addCustomClauseInput()"><i class="fa-solid fa-plus"></i> Ajouter une clause spécifique</button>
+
+                                    <h3 class="form-section-title" style="margin-top:24px;"><i class="fa-solid fa-door-open"></i> Résiliation & Préavis</h3>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Préavis de rupture</label>
+                                            <input type="text" id="noticePeriod" value="7 jours notifié par écrit" oninput="updatePreview()">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 6: Finalisation & Signature -->
+                                <div class="wizard-step-content" id="step6" style="display:none;">
+                                    <h3 class="form-section-title"><i class="fa-solid fa-pen-nib"></i> Signatures "Lu et approuvé"</h3>
+                                    <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Apposez la signature électronique ci-dessous. La mention obligatoire <strong>« Lu et approuvé »</strong> sera automatiquement ajoutée dans le document.</p>
+                                    
+                                    <div class="form-row">
+                                        <div>
+                                            <label>Signature Entreprise</label>
+                                            <button class="btn btn-secondary btn-sm" onclick="openSignatureModal('company')">Dessiner la signature</button>
+                                            <div id="compSigStatus" style="font-size:12px; color:var(--success); margin-top:4px;"></div>
+                                        </div>
+                                        <div>
+                                            <label>Signature Closeuse</label>
+                                            <button class="btn btn-secondary btn-sm" onclick="openSignatureModal('closeuse')">Dessiner la signature</button>
+                                            <div id="closeuseSigStatus" style="font-size:12px; color:var(--success); margin-top:4px;"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="legal-notice">
+                                        <strong>Mention Légale :</strong> Ce générateur fournit un modèle de contrat de collaboration conforme aux pratiques e-commerce. Modèle édité par <strong>ECOM ACADEMY PRO</strong>.
+                                    </div>
+                                </div>
+
+                                <!-- Navigation Buttons -->
+                                <div style="display:flex; justify-content:space-between; margin-top:24px; padding-top:16px; border-top:1px solid var(--border);">
+                                    <button class="btn btn-secondary" id="btnPrev" onclick="changeStep(-1)" style="display:none;">Précédent</button>
+                                    <button class="btn btn-primary" id="btnNext" onclick="changeStep(1)">Suivant</button>
+                                    <button class="btn btn-success" id="btnGenerate" onclick="generateAndSaveContract()" style="display:none;"><i class="fa-solid fa-check"></i> GÉNÉRER LE CONTRAT</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Live Document Preview (Base Contrat PDF Identique) -->
+                        <div class="preview-container" id="previewSide">
+                            <div class="document-paper" id="contractPaper">
+                                <div class="doc-header-top">
+                                    <div class="doc-main-title" id="docMainTitle">DOCUMENT CONTRACTUEL</div>
+                                    <div class="doc-app-name" id="docAppName">ECOM ACADEMY PRO</div>
+                                </div>
+
+                                <div class="doc-sub-header" id="docSubHeader">CONTRAT DE COLLABORATION CLOSEUSE</div>
+
+                                <p style="margin-bottom:12px;" id="docIntro">Le présent contrat définit les conditions de collaboration entre les parties désignées ci-dessous.</p>
+
+                                <table class="doc-table-info">
+                                    <tr><th colspan="2" id="docThCompany">L'ENTREPRISE</th></tr>
+                                    <tr><td width="35%"><strong id="docLabelCompName">Nom de l'Entreprise :</strong></td><td id="docCompName">ECOM ACADEMY PRO</td></tr>
+                                    <tr><td><strong id="docLabelCompAddress">Adresse :</strong></td><td id="docCompAddress">Cotonou, Bénin</td></tr>
+                                    <tr><td><strong id="docLabelCompContact">Tél / Email :</strong></td><td id="docCompContact">-- / --</td></tr>
+                                </table>
+
+                                <table class="doc-table-info">
+                                    <tr><th colspan="2" id="docThCloseuse">LA CLOSEUSE</th></tr>
+                                    <tr><td width="35%"><strong id="docLabelCloseuseName">Nom et prénom :</strong></td><td id="docCloseuseName">[Nom et prénom]</td></tr>
+                                    <tr><td><strong id="docLabelCloseuseAddress">Adresse :</strong></td><td id="docCloseuseAddress">[Adresse]</td></tr>
+                                    <tr><td><strong id="docLabelCloseuseContact">Tél / Email :</strong></td><td id="docCloseuseContact">[Téléphone / Email]</td></tr>
+                                </table>
+
+                                <p style="margin-bottom:12px; font-style:italic;" id="docHereinafter">Ci-après dénommé(e) « la Closeuse ».</p>
+
+                                <div class="doc-section-title" id="docArt1Title">ARTICLE 1 : OBJET DU CONTRAT</div>
+                                <p id="docArt1Text">Le présent contrat a pour objet de définir les conditions dans lesquelles la Closeuse assure la mission de confirmation des commandes et de redirection vers le livreur pour la livraison des produits de l'Entreprise.</p>
+
+                                <div class="doc-section-title" id="docArt2Title">ARTICLE 2 : NATURE DE LA COLLABORATION</div>
+                                <p id="docNatureText">La collaboration est conclue pour une durée déterminée, du 06 septembre 2026 au 20 décembre 2026. La Closeuse exerce ses missions en toute autonomie, selon les besoins et les leads fournis par l'Entreprise.</p>
+
+                                <div class="doc-section-title" id="docArt3Title">ARTICLE 3 : MISSIONS DE LA CLOSEUSE</div>
+                                <p id="docMissionsIntro">La Closeuse s'engage à :</p>
+                                <ul id="docMissionsList" style="padding-left:20px;">
+                                    <li>Contacter les prospects/clients pour confirmer leurs commandes.</li>
+                                    <li>Transmettre les informations nécessaires au livreur pour assurer la livraison.</li>
+                                    <li>Reporter les informations et le suivi dans la feuille Google Sheet mise à disposition.</li>
+                                </ul>
+
+                                <div class="doc-section-title" id="docArt4Title">ARTICLE 4 : RÉMUNÉRATION</div>
+                                <p id="docRemunText">La Closeuse percevra une rémunération de <strong>2 000 FCFA</strong> par produit effectivement livré et encaissé.</p>
+
+                                <div class="doc-section-title" id="docArt5Title">ARTICLE 5 : CONDITIONS DE TRAVAIL</div>
+                                <p id="docArt5Text">Les horaires sont flexibles et dépendent du volume de leads transmis. L'Entreprise met à disposition la feuille Google Sheet / l'application pour le suivi et la gestion. La Closeuse s'engage à renseigner régulièrement et correctement les informations.</p>
+
+                                <div class="doc-section-title" id="docArt6Title">ARTICLE 6 : CONFIDENTIALITÉ ET OBLIGATIONS</div>
+                                <p id="docConfIntro">La Closeuse s'engage à :</p>
+                                <ul id="docConfList" style="padding-left:20px;">
+                                    <li>Garantir la protection des données clients.</li>
+                                    <li>Ne pas divulguer les informations confidentielles de l'Entreprise.</li>
+                                    <li>Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.</li>
+                                </ul>
+
+                                <div id="docCustomClausesSection"></div>
+
+                                <div class="doc-section-title" id="docArt7Title">ARTICLE 7 : DURÉE ET RUPTURE</div>
+                                <p id="docNoticeText">Le présent contrat est conclu jusqu'au 20 décembre 2026. Chaque partie peut y mettre fin en respectant un préavis de 7 jours notifié par écrit.</p>
+
+                                <div class="doc-section-title" id="docArt8Title">ARTICLE 8 : LITIGES</div>
+                                <p id="docArt8Text">En cas de litige relatif à l'interprétation ou à l'exécution du présent contrat, les parties s'efforceront de trouver une solution à l'amiable.</p>
+
+                                <p style="margin-top:16px;" id="docDoneAt">Fait à: <span id="docCitySign">Cotonou</span>, le <span id="docDateSign">--/--/----</span></p>
+
+                                <div class="doc-signatures">
+                                    <div class="signature-box">
+                                        <p><strong id="docSigCompLabel">SIGNATURE DE L'ENTREPRISE</strong></p>
+                                        <p style="font-size:11px; font-style:italic; color:#475569;" id="docSigCompMention">« Lu et approuvé »</p>
+                                        <img id="docSigCompImg" class="signature-img" style="display:none;">
+                                    </div>
+                                    <div class="signature-box">
+                                        <p><strong id="docSigCloseuseLabel">SIGNATURE DE LA CLOSEUSE</strong></p>
+                                        <p style="font-size:11px; font-style:italic; color:#475569;" id="docSigCloseuseMention">(précédée de la mention « Lu et approuvé »)</p>
+                                        <img id="docSigCloseuseImg" class="signature-img" style="display:none;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. CONTRACTS LIST VIEW -->
+                <section id="contractsView" class="view-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Liste de tous les contrats</h2>
+                        <input type="text" id="searchContractInput" placeholder="Rechercher par nom ou N°..." style="width:250px;" oninput="filterContracts()">
+                    </div>
+                    <div class="table-card">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>N° Contrat</th>
+                                    <th>Closeuse</th>
+                                    <th>Date</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allContractsTable"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 4. COMPANY PROFILE VIEW -->
+                <section id="companyView" class="view-section">
+                    <div class="form-card" style="max-width:700px; margin:0 auto;">
+                        <h3 class="form-section-title"><i class="fa-solid fa-building"></i> Profil Entreprise (ECOM ACADEMY PRO)</h3>
+                        <form onsubmit="saveCompanyProfile(event)">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nom Entreprise *</label>
+                                    <input type="text" id="savedCompName" value="ECOM ACADEMY PRO" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nom Commercial</label>
+                                    <input type="text" id="savedCompTrade" value="Ecom Academy Pro">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nom du Responsable *</label>
+                                    <input type="text" id="savedCompOwner" value="Junior GANGNIHESSOU" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Fonction</label>
+                                    <input type="text" id="savedCompRole" value="Fondateur / CEO">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Adresse complète</label>
+                                <input type="text" id="savedCompAddress" value="Cotonou, République du Bénin">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Téléphone</label>
+                                    <input type="tel" id="savedCompPhone">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="savedCompEmail">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Enregistrer les informations</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- 5. MODELS / TEMPLATES VIEW -->
+                <section id="modelsView" class="view-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Modèles de Contrats Prédéfinis</h2>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
+                        <div class="form-card">
+                            <h4>Closeuse ECOM ACADEMY PRO (Standard)</h4>
+                            <p style="font-size:12px; color:var(--text-muted); margin:8px 0;">Contrat de confirmation des commandes et redirection livreur, rémunéré par commission par produit livré.</p>
+                            <button class="btn btn-secondary btn-sm" onclick="loadTemplate('standard')">Utiliser ce modèle</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 6. SETTINGS & BACKUP VIEW -->
+                <section id="settingsView" class="view-section">
+                    <div class="form-card" style="max-width:600px; margin:0 auto;">
+                        <h3 class="form-section-title"><i class="fa-solid fa-database"></i> Sauvegarde & Exportation</h3>
+                        <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Exporter ou restaurer vos données de contrats au format JSON.</p>
+                        
+                        <div style="display:flex; gap:16px;">
+                            <button class="btn btn-secondary" onclick="exportDataJSON()"><i class="fa-solid fa-download"></i> Exporter mes données</button>
+                            <button class="btn btn-secondary" onclick="document.getElementById('importJsonInput').click()"><i class="fa-solid fa-upload"></i> Importer mes données</button>
+                            <input type="file" id="importJsonInput" accept=".json" style="display:none;" onchange="importDataJSON(event)">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 7. SIGNING VIEW (pour le destinataire) -->
+                <section id="signingView" class="view-section">
+                    <div style="max-width:900px; margin:0 auto;">
+                        <div class="form-card" style="margin-bottom:24px;">
+                            <h3 class="form-section-title"><i class="fa-solid fa-file-signature"></i> Signature du contrat</h3>
+                            <p style="font-size:14px; color:var(--text-muted); margin-bottom:16px;">
+                                Vous avez reçu une demande de signature. Veuillez lire le contrat ci-dessous puis apposer votre signature.
+                            </p>
+                            <div id="signingContractInfo" style="background:#f8fafc; padding:16px; border-radius:8px; margin-bottom:16px; font-size:14px;"></div>
+                            <div id="signingStatus" style="display:none; padding:12px 16px; border-radius:8px; margin-bottom:16px; font-weight:600;"></div>
+                        </div>
+
+                        <div class="preview-container" style="position:static; max-height:none; margin-bottom:24px;">
+                            <div class="document-paper" id="signingContractPaper"></div>
+                        </div>
+
+                        <div class="form-card" id="signingActionBox">
+                            <h3 class="form-section-title"><i class="fa-solid fa-pen-nib"></i> Votre signature</h3>
+                            <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Dessinez votre signature ci-dessous puis validez.</p>
+                            <div class="canvas-container" style="margin-bottom:16px;">
+                                <canvas id="signingCanvas" width="500" height="150" style="width:100%; height:150px; border:1px solid #e2e8f0; border-radius:8px; background:#fafafa; cursor:crosshair;"></canvas>
+                            </div>
+                            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                                <button class="btn btn-secondary" onclick="clearSigningCanvas()"><i class="fa-solid fa-eraser"></i> Effacer</button>
+                                <button class="btn btn-success" id="btnConfirmSign" onclick="confirmRecipientSignature()">
+                                    <i class="fa-solid fa-check"></i> Signer et valider le contrat
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- SIGNATURE MODAL -->
+    <div class="modal-overlay" id="sigModal">
+        <div class="modal-card">
+            <h3>Dessiner la signature</h3>
+            <div class="canvas-container">
+                <canvas id="sigCanvas"></canvas>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <button class="btn btn-secondary" onclick="clearSignatureCanvas()">Effacer</button>
+                <button class="btn btn-primary" onclick="saveSignatureCanvas()">Valider</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // State Management
+        let currentStep = 1;
+        let totalSteps = 6;
+        let logoBase64 = "";
+        let currentSigTarget = "";
+        let compSignatureData = "";
+        let closeuseSignatureData = "";
+        let customClausesList = [];
+        let currentLang = "fr";
+
+        // LocalStorage Keys
+        const STORAGE_KEY_CONTRACTS = "ecom_academy_pro_contracts";
+        const STORAGE_KEY_COMPANY = "ecom_academy_pro_company";
+
+        // ==================== SUPABASE + RESEND CONFIG ====================
+        const SUPABASE_URL = "https://acuwzcpxbbtivjilhckj.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_f72QaYAgu7L1MIbhvQKhow_BqSz__Lz";
+        const RESEND_API_KEY = "re_9LiYKkd4_9BEAhcge3ojqSAq7CwbE982Z";
+        const APP_BASE_URL = window.location.origin;
+
+        // Initialisation Supabase
+        let supabaseClient = null;
+        try {
+            if (typeof supabase !== "undefined") {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log("✅ Supabase initialisé avec succès");
+            }
+        } catch (e) {
+            console.warn("Erreur initialisation Supabase:", e.message);
+        }
+
+        // Génère un token unique pour le lien de signature
+        function generateSigningToken() {
+            return 'sig_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 10);
+        }
+
+        // ==================== TRANSLATIONS ====================
+        const translations = {
+            fr: {
+                mainTitle: "DOCUMENT CONTRACTUEL",
+                subHeader: "CONTRAT DE COLLABORATION CLOSEUSE",
+                intro: "Le présent contrat définit les conditions de collaboration entre les parties désignées ci-dessous.",
+                thCompany: "L'ENTREPRISE",
+                thCloseuse: "LA CLOSEUSE",
+                labelCompName: "Nom de l'Entreprise :",
+                labelCompAddress: "Adresse :",
+                labelCompContact: "Tél / Email :",
+                labelCloseuseName: "Nom et prénom :",
+                labelCloseuseAddress: "Adresse :",
+                labelCloseuseContact: "Tél / Email :",
+                hereinafter: "Ci-après dénommé(e) « la Closeuse ».",
+                art1Title: "ARTICLE 1 : OBJET DU CONTRAT",
+                art1Text: "Le présent contrat a pour objet de définir les conditions dans lesquelles la Closeuse assure la mission de confirmation des commandes et de redirection vers le livreur pour la livraison des produits de l'Entreprise.",
+                art2Title: "ARTICLE 2 : NATURE DE LA COLLABORATION",
+                natureTemplate: "La collaboration est conclue pour une durée déterminée, du {start} au {end}. La Closeuse exerce ses missions en toute autonomie, selon les besoins et les leads fournis par l'Entreprise.",
+                art3Title: "ARTICLE 3 : MISSIONS DE LA CLOSEUSE",
+                missionsIntro: "La Closeuse s'engage à :",
+                art4Title: "ARTICLE 4 : RÉMUNÉRATION",
+                remunTemplate: "La Closeuse percevra une rémunération de <strong>{amount}</strong> par produit effectivement livré.",
+                art5Title: "ARTICLE 5 : CONDITIONS DE TRAVAIL",
+                art5Text: "Les horaires sont flexibles et dépendent du volume de leads transmis. L'Entreprise met à disposition la feuille Google Sheet / l'application pour le suivi et la gestion. La Closeuse s'engage à renseigner régulièrement et correctement les informations.",
+                art6Title: "ARTICLE 6 : CONFIDENTIALITÉ ET OBLIGATIONS",
+                confIntro: "La Closeuse s'engage à :",
+                art7Title: "ARTICLE 7 : DURÉE ET RUPTURE",
+                noticeTemplate: "Le présent contrat est conclu pour la durée déterminée spécifiée. Chaque partie peut y mettre fin en respectant un préavis de {notice}.",
+                art8Title: "ARTICLE 8 : LITIGES",
+                art8Text: "En cas de litige relatif à l'interprétation ou à l'exécution du présent contrat, les parties s'efforceront de trouver une solution à l'amiable.",
+                doneAtPrefix: "Fait à: ",
+                doneAtConnector: ", le ",
+                sigCompLabel: "SIGNATURE DE L'ENTREPRISE",
+                sigCompMention: "« Lu et approuvé »",
+                sigCloseuseLabel: "SIGNATURE DE LA CLOSEUSE",
+                sigCloseuseMention: "(précédée de la mention « Lu et approuvé »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Contacter les prospects/clients pour confirmer leurs commandes.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Transmettre les informations nécessaires au livreur pour assurer la livraison.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Relancer les prospects indécis pour maximiser le taux de confirmation."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Garantir la protection des données clients.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Ne pas divulguer les informations confidentielles de l'Entreprise.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications."
+                },
+                articlePrefix: "ARTICLE",
+                placeholderName: "[Nom et prénom]",
+                placeholderAddress: "[Adresse]",
+                placeholderContact: "[Téléphone / Email]",
+                amountPlaceholder: "[Montant]",
+                noticeDefault: "7 jours"
+            },
+            en: {
+                mainTitle: "CONTRACTUAL DOCUMENT",
+                subHeader: "CLOSER COLLABORATION AGREEMENT",
+                intro: "This agreement sets out the terms of collaboration between the parties designated below.",
+                thCompany: "THE COMPANY",
+                thCloseuse: "THE CLOSER",
+                labelCompName: "Company Name:",
+                labelCompAddress: "Address:",
+                labelCompContact: "Phone / Email:",
+                labelCloseuseName: "Full Name:",
+                labelCloseuseAddress: "Address:",
+                labelCloseuseContact: "Phone / Email:",
+                hereinafter: "Hereinafter referred to as “the Closer”.",
+                art1Title: "ARTICLE 1: PURPOSE OF THE AGREEMENT",
+                art1Text: "The purpose of this agreement is to define the conditions under which the Closer performs the mission of confirming orders and redirecting them to the delivery person for the delivery of the Company’s products.",
+                art2Title: "ARTICLE 2: NATURE OF THE COLLABORATION",
+                natureTemplate: "The collaboration is entered into for a fixed term, from {start} to {end}. The Closer carries out their missions with full autonomy, according to the needs and leads provided by the Company.",
+                art3Title: "ARTICLE 3: CLOSER’S MISSIONS",
+                missionsIntro: "The Closer undertakes to:",
+                art4Title: "ARTICLE 4: REMUNERATION",
+                remunTemplate: "The Closer shall receive remuneration of <strong>{amount}</strong> per product effectively delivered.",
+                art5Title: "ARTICLE 5: WORKING CONDITIONS",
+                art5Text: "Working hours are flexible and depend on the volume of leads transmitted. The Company provides the Google Sheet / application for tracking and management. The Closer undertakes to enter the information regularly and accurately.",
+                art6Title: "ARTICLE 6: CONFIDENTIALITY AND OBLIGATIONS",
+                confIntro: "The Closer undertakes to:",
+                art7Title: "ARTICLE 7: DURATION AND TERMINATION",
+                noticeTemplate: "This agreement is concluded for the specified fixed term. Either party may terminate it by giving {notice} written notice.",
+                art8Title: "ARTICLE 8: DISPUTES",
+                art8Text: "In the event of a dispute relating to the interpretation or performance of this agreement, the parties shall endeavour to find an amicable solution.",
+                doneAtPrefix: "Done at: ",
+                doneAtConnector: ", on ",
+                sigCompLabel: "COMPANY SIGNATURE",
+                sigCompMention: "“Read and approved”",
+                sigCloseuseLabel: "CLOSER SIGNATURE",
+                sigCloseuseMention: "(preceded by the mention “Read and approved”)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Contact prospects/clients to confirm their orders.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Transmit the necessary information to the delivery person to ensure delivery.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Report information and follow-up in the Google Sheet or tool provided.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Follow up with undecided prospects to maximize the confirmation rate."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Guarantee the protection of client data.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Not disclose the Company’s confidential information.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Respect the Company’s image and reputation in all communications."
+                },
+                articlePrefix: "ARTICLE",
+                placeholderName: "[Full Name]",
+                placeholderAddress: "[Address]",
+                placeholderContact: "[Phone / Email]",
+                amountPlaceholder: "[Amount]",
+                noticeDefault: "7 days"
+            },
+            es: {
+                mainTitle: "DOCUMENTO CONTRACTUAL",
+                subHeader: "CONTRATO DE COLABORACIÓN DE CLOSER",
+                intro: "El presente contrato define las condiciones de colaboración entre las partes designadas a continuación.",
+                thCompany: "LA EMPRESA",
+                thCloseuse: "LA CLOSER",
+                labelCompName: "Nombre de la Empresa:",
+                labelCompAddress: "Dirección:",
+                labelCompContact: "Tel / Email:",
+                labelCloseuseName: "Nombre y apellido:",
+                labelCloseuseAddress: "Dirección:",
+                labelCloseuseContact: "Tel / Email:",
+                hereinafter: "En adelante denominada « la Closer ».",
+                art1Title: "ARTÍCULO 1: OBJETO DEL CONTRATO",
+                art1Text: "El presente contrato tiene por objeto definir las condiciones en las que la Closer realiza la misión de confirmación de pedidos y redirección al repartidor para la entrega de los productos de la Empresa.",
+                art2Title: "ARTÍCULO 2: NATURALEZA DE LA COLABORACIÓN",
+                natureTemplate: "La colaboración se celebra por una duración determinada, del {start} al {end}. La Closer ejerce sus misiones con plena autonomía, según las necesidades y los leads proporcionados por la Empresa.",
+                art3Title: "ARTÍCULO 3: MISIONES DE LA CLOSER",
+                missionsIntro: "La Closer se compromete a:",
+                art4Title: "ARTÍCULO 4: REMUNERACIÓN",
+                remunTemplate: "La Closer percibirá una remuneración de <strong>{amount}</strong> por producto efectivamente entregado.",
+                art5Title: "ARTÍCULO 5: CONDICIONES DE TRABAJO",
+                art5Text: "Los horarios son flexibles y dependen del volumen de leads transmitidos. La Empresa pone a disposición la hoja de Google Sheet / la aplicación para el seguimiento y la gestión. La Closer se compromete a registrar la información de forma regular y correcta.",
+                art6Title: "ARTÍCULO 6: CONFIDENCIALIDAD Y OBLIGACIONES",
+                confIntro: "La Closer se compromete a:",
+                art7Title: "ARTÍCULO 7: DURACIÓN Y RESCISIÓN",
+                noticeTemplate: "El presente contrato se celebra por la duración determinada especificada. Cualquiera de las partes puede ponerle fin respetando un preaviso de {notice}.",
+                art8Title: "ARTÍCULO 8: LITIGIOS",
+                art8Text: "En caso de litigio relativo a la interpretación o a la ejecución del presente contrato, las partes se esforzarán por encontrar una solución amistosa.",
+                doneAtPrefix: "Hecho en: ",
+                doneAtConnector: ", el ",
+                sigCompLabel: "FIRMA DE LA EMPRESA",
+                sigCompMention: "« Leído y aprobado »",
+                sigCloseuseLabel: "FIRMA DE LA CLOSER",
+                sigCloseuseMention: "(precedida de la mención « Leído y aprobado »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Contactar a los prospectos/clientes para confirmar sus pedidos.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Transmitir la información necesaria al repartidor para asegurar la entrega.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Registrar la información y el seguimiento en la hoja de Google Sheet o en la herramienta puesta a disposición.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Relanzar a los prospectos indecisos para maximizar la tasa de confirmación."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Garantizar la protección de los datos de los clientes.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "No divulgar la información confidencial de la Empresa.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Respetar la imagen y la reputación de la Empresa en todas sus comunicaciones."
+                },
+                articlePrefix: "ARTÍCULO",
+                placeholderName: "[Nombre y apellido]",
+                placeholderAddress: "[Dirección]",
+                placeholderContact: "[Teléfono / Email]",
+                amountPlaceholder: "[Importe]",
+                noticeDefault: "7 días"
+            },
+            pt: {
+                mainTitle: "DOCUMENTO CONTRATUAL",
+                subHeader: "CONTRATO DE COLABORAÇÃO DE CLOSER",
+                intro: "O presente contrato define as condições de colaboração entre as partes designadas abaixo.",
+                thCompany: "A EMPRESA",
+                thCloseuse: "A CLOSER",
+                labelCompName: "Nome da Empresa:",
+                labelCompAddress: "Endereço:",
+                labelCompContact: "Tel / Email:",
+                labelCloseuseName: "Nome e sobrenome:",
+                labelCloseuseAddress: "Endereço:",
+                labelCloseuseContact: "Tel / Email:",
+                hereinafter: "Doravante denominada « a Closer ».",
+                art1Title: "ARTIGO 1: OBJETO DO CONTRATO",
+                art1Text: "O presente contrato tem por objeto definir as condições nas quais a Closer assegura a missão de confirmação de encomendas e redirecionamento ao entregador para a entrega dos produtos da Empresa.",
+                art2Title: "ARTIGO 2: NATUREZA DA COLABORAÇÃO",
+                natureTemplate: "A colaboração é celebrada por uma duração determinada, de {start} a {end}. A Closer exerce as suas missões com total autonomia, de acordo com as necessidades e os leads fornecidos pela Empresa.",
+                art3Title: "ARTIGO 3: MISSÕES DA CLOSER",
+                missionsIntro: "A Closer compromete-se a:",
+                art4Title: "ARTIGO 4: REMUNERAÇÃO",
+                remunTemplate: "A Closer receberá uma remuneração de <strong>{amount}</strong> por produto efetivamente entregue.",
+                art5Title: "ARTIGO 5: CONDIÇÕES DE TRABALHO",
+                art5Text: "Os horários são flexíveis e dependem do volume de leads transmitidos. A Empresa disponibiliza a folha Google Sheet / a aplicação para o acompanhamento e a gestão. A Closer compromete-se a registar as informações de forma regular e correta.",
+                art6Title: "ARTIGO 6: CONFIDENCIALIDADE E OBRIGAÇÕES",
+                confIntro: "A Closer compromete-se a:",
+                art7Title: "ARTIGO 7: DURAÇÃO E RESCISÃO",
+                noticeTemplate: "O presente contrato é celebrado pela duração determinada especificada. Qualquer das partes pode pôr-lhe termo respeitando um pré-aviso de {notice}.",
+                art8Title: "ARTIGO 8: LITÍGIOS",
+                art8Text: "Em caso de litígio relativo à interpretação ou à execução do presente contrato, as partes esforçar-se-ão por encontrar uma solução amigável.",
+                doneAtPrefix: "Feito em: ",
+                doneAtConnector: ", a ",
+                sigCompLabel: "ASSINATURA DA EMPRESA",
+                sigCompMention: "« Lido e aprovado »",
+                sigCloseuseLabel: "ASSINATURA DA CLOSER",
+                sigCloseuseMention: "(precedida da menção « Lido e aprovado »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Contactar os potenciais clientes/clientes para confirmar as suas encomendas.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Transmitir as informações necessárias ao entregador para assegurar a entrega.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Registar as informações e o acompanhamento na folha Google Sheet ou na ferramenta disponibilizada.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Relançar os potenciais clientes indecisos para maximizar a taxa de confirmação."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Garantir a proteção dos dados dos clientes.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Não divulgar as informações confidenciais da Empresa.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Respeitar a imagem e a reputação da Empresa em todas as suas comunicações."
+                },
+                articlePrefix: "ARTIGO",
+                placeholderName: "[Nome e sobrenome]",
+                placeholderAddress: "[Endereço]",
+                placeholderContact: "[Telefone / Email]",
+                amountPlaceholder: "[Valor]",
+                noticeDefault: "7 dias"
+            },
+            ar: {
+                mainTitle: "وثيقة تعاقدية",
+                subHeader: "عقد تعاون المُؤكِّدة (كلوزر)",
+                intro: "يحدد هذا العقد شروط التعاون بين الأطراف المذكورة أدناه.",
+                thCompany: "الشركة",
+                thCloseuse: "المُؤكِّدة (الكلوزر)",
+                labelCompName: "اسم الشركة:",
+                labelCompAddress: "العنوان:",
+                labelCompContact: "الهاتف / البريد الإلكتروني:",
+                labelCloseuseName: "الاسم واللقب:",
+                labelCloseuseAddress: "العنوان:",
+                labelCloseuseContact: "الهاتف / البريد الإلكتروني:",
+                hereinafter: "يُشار إليها فيما يلي بـ « المُؤكِّدة ».",
+                art1Title: "المادة 1: موضوع العقد",
+                art1Text: "يهدف هذا العقد إلى تحديد الشروط التي تقوم بموجبها المُؤكِّدة بمهمة تأكيد الطلبات وإعادة توجيهها إلى المُسلِّم لتوصيل منتجات الشركة.",
+                art2Title: "المادة 2: طبيعة التعاون",
+                natureTemplate: "يُبرم التعاون لمدة محددة، من {start} إلى {end}. تمارس المُؤكِّدة مهامها باستقلالية تامة، وفقاً للاحتياجات والعملاء المحتملين الذين توفرهم الشركة.",
+                art3Title: "المادة 3: مهام المُؤكِّدة",
+                missionsIntro: "تتعهد المُؤكِّدة بما يلي:",
+                art4Title: "المادة 4: الأجر",
+                remunTemplate: "تحصل المُؤكِّدة على أجر قدره <strong>{amount}</strong> عن كل منتج يتم تسليمه فعلياً.",
+                art5Title: "المادة 5: ظروف العمل",
+                art5Text: "ساعات العمل مرنة وتعتمد على حجم العملاء المحتملين المرسلين. توفر الشركة ورقة Google Sheet / التطبيق للمتابعة والإدارة. تتعهد المُؤكِّدة بإدخال المعلومات بانتظام وبشكل صحيح.",
+                art6Title: "المادة 6: السرية والالتزامات",
+                confIntro: "تتعهد المُؤكِّدة بما يلي:",
+                art7Title: "المادة 7: المدة والإنهاء",
+                noticeTemplate: "يُبرم هذا العقد للمدة المحددة المذكورة. يجوز لأي طرف إنهاءه مع احترام إشعار مسبق مدته {notice}.",
+                art8Title: "المادة 8: المنازعات",
+                art8Text: "في حالة نشوء نزاع يتعلق بتفسير أو تنفيذ هذا العقد، يسعى الطرفان إلى إيجاد حل ودي.",
+                doneAtPrefix: "حُرِّر في: ",
+                doneAtConnector: "، بتاريخ ",
+                sigCompLabel: "توقيع الشركة",
+                sigCompMention: "« قُرئ ووُوفق عليه »",
+                sigCloseuseLabel: "توقيع المُؤكِّدة",
+                sigCloseuseMention: "(مسبوقاً بعبارة « قُرئ ووُوفق عليه »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "الاتصال بالعملاء المحتملين/العملاء لتأكيد طلباتهم.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "نقل المعلومات اللازمة إلى المُسلِّم لضمان التسليم.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "تسجيل المعلومات والمتابعة في ورقة Google Sheet أو الأداة المتوفرة.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "متابعة العملاء المحتملين المترددين لتعظيم معدل التأكيد."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "ضمان حماية بيانات العملاء.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "عدم الإفصاح عن المعلومات السرية للشركة.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "احترام صورة وسمعة الشركة في جميع اتصالاتها."
+                },
+                articlePrefix: "المادة",
+                placeholderName: "[الاسم واللقب]",
+                placeholderAddress: "[العنوان]",
+                placeholderContact: "[الهاتف / البريد الإلكتروني]",
+                amountPlaceholder: "[المبلغ]",
+                noticeDefault: "7 أيام"
+            },
+            // ===== KRIO (Sierra Leone) =====
+            kri: {
+                mainTitle: "KONTRAK DOKYUMENT",
+                subHeader: "KLOZA KOLABORESHON AGREMENT",
+                intro: "Dis agrement de set di terms of kolaboreshon bitwin di patis we de bilow.",
+                thCompany: "DI KOMPANI",
+                thCloseuse: "DI KLOZA",
+                labelCompName: "Kompani Nem:",
+                labelCompAddress: "Adres:",
+                labelCompContact: "Fon / Email:",
+                labelCloseuseName: "Ful Nem:",
+                labelCloseuseAddress: "Adres:",
+                labelCloseuseContact: "Fon / Email:",
+                hereinafter: "We go de kol am “di Kloza” from now.",
+                art1Title: "ATIKUL 1: PURPOSE OF DI AGREMENT",
+                art1Text: "Di purpose of dis agrement na for define di kondishons we di Kloza go de perform di mision of confirm odas an redirect dem to di delivery person for di delivery of di Kompani products.",
+                art2Title: "ATIKUL 2: NECHA OF DI KOLABORESHON",
+                natureTemplate: "Di kolaboreshon de for fixed term, from {start} to {end}. Di Kloza de do in mision dem wit full autonomy, according to di needs an leads we di Kompani provide.",
+                art3Title: "ATIKUL 3: KLOZA MISION DEM",
+                missionsIntro: "Di Kloza de undertake for:",
+                art4Title: "ATIKUL 4: PAYMENT",
+                remunTemplate: "Di Kloza go get payment of <strong>{amount}</strong> for every product we dem deliver properly.",
+                art5Title: "ATIKUL 5: WOKING KONDISHONS",
+                art5Text: "Woking hours flexible an de depend on di volume of leads we dem send. Di Kompani de provide di Google Sheet / application for tracking an management. Di Kloza de undertake for enter di information regularly an correctly.",
+                art6Title: "ATIKUL 6: KONFIDENSHIALITY AN OBLIGESHONS",
+                confIntro: "Di Kloza de undertake for:",
+                art7Title: "ATIKUL 7: DURATION AN TERMINATION",
+                noticeTemplate: "Dis agrement de for di specified fixed term. Any party fit terminate am by giving {notice} written notice.",
+                art8Title: "ATIKUL 8: DISPUTES",
+                art8Text: "If dispute de about interpretation or performance of dis agrement, di parties go try for find amicable solution.",
+                doneAtPrefix: "Done at: ",
+                doneAtConnector: ", on ",
+                sigCompLabel: "KOMPANI SIGNATURE",
+                sigCompMention: "“Read an approve”",
+                sigCloseuseLabel: "KLOZA SIGNATURE",
+                sigCloseuseMention: "(preceded by di mention “Read an approve”)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Contact prospects/clients for confirm dem odas.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Pass di necessary information to di delivery person for ensure delivery.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Report information an follow-up inside di Google Sheet or tool we dem provide.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Follow up wit undecided prospects for maximize di confirmation rate."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Guarantee protection of client data.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "No disclose di Kompani confidential information.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Respect di Kompani image an reputation in all communications."
+                },
+                articlePrefix: "ATIKUL",
+                placeholderName: "[Ful Nem]",
+                placeholderAddress: "[Adres]",
+                placeholderContact: "[Fon / Email]",
+                amountPlaceholder: "[Amount]",
+                noticeDefault: "7 days"
+            },
+            // ===== CRIOULO de Guinée-Bissau =====
+            pov: {
+                mainTitle: "DOKUMENTU KONTRATUAL",
+                subHeader: "KONTRATU DI KOLABORASON DI KLOSER",
+                intro: "Isti kontratu ta defini kondisons di kolaborason entre partis ku ta designadu abaixo.",
+                thCompany: "EMPREZA",
+                thCloseuse: "KLOSER",
+                labelCompName: "Nomi di Empreza:",
+                labelCompAddress: "Enderesu:",
+                labelCompContact: "Telefon / Email:",
+                labelCloseuseName: "Nomi kompletu:",
+                labelCloseuseAddress: "Enderesu:",
+                labelCloseuseContact: "Telefon / Email:",
+                hereinafter: "Daqui pa diante ta chama « Kloser ».",
+                art1Title: "ARTIGU 1: OBJETU DI KONTRATU",
+                art1Text: "Isti kontratu ten objetu di defini kondisons na kual Kloser ta faze misom di konfirmason di ordens i redirijon pa entregador pa entrega di produtus di Empreza.",
+                art2Title: "ARTIGU 2: NATUREZA DI KOLABORASON",
+                natureTemplate: "Kolaborason ta faze pa durason determinadu, di {start} te {end}. Kloser ta faze si misons ku autonomia total, segun nesesidadis i leads ku Empreza ta da.",
+                art3Title: "ARTIGU 3: MISONS DI KLOSER",
+                missionsIntro: "Kloser ta komprometidu a:",
+                art4Title: "ARTIGU 4: REMUNERASON",
+                remunTemplate: "Kloser ta risibi remunerason di <strong>{amount}</strong> pa kada produtu ku ta entregadu efetivamente.",
+                art5Title: "ARTIGU 5: KONDISONS DI TRABALHU",
+                art5Text: "Orarius ta flexivel i ta dependi di volume di leads ku ta transmitidu. Empreza ta po a disposison folha Google Sheet / aplikason pa seguimentu i jestaun. Kloser ta komprometidu a regista informasons di forma regular i korreta.",
+                art6Title: "ARTIGU 6: KONFIDENSIALIDADI I OBRIGASONS",
+                confIntro: "Kloser ta komprometidu a:",
+                art7Title: "ARTIGU 7: DURASON I RESISAUN",
+                noticeTemplate: "Isti kontratu ta faze pa durason determinadu ku ta espesifikadu. Kada parti podi termina-l ku pre-avisu di {notice}.",
+                art8Title: "ARTIGU 8: LITIJUS",
+                art8Text: "Na kazu di litiju relasionadu ku interpretason o ezekuson di isti kontratu, partis ta sforga pa atxa soluson amigavel.",
+                doneAtPrefix: "Fazidu na: ",
+                doneAtConnector: ", na ",
+                sigCompLabel: "ASINATURA DI EMPREZA",
+                sigCompMention: "« Lidu i aprovadu »",
+                sigCloseuseLabel: "ASINATURA DI KLOSER",
+                sigCloseuseMention: "(precedidu di menson « Lidu i aprovadu »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Kontakta prospectus/klientis pa konfirma si ordens.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Transmite informasons nesesarius pa entregador pa asegura entrega.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Regista informasons i seguimentu na folha Google Sheet o ferramenta ku ta po a disposison.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Relansa prospectus indecisos pa maksimiza taxa di konfirmason."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Garanti proteson di dadus di klientis.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Ka divulga informasons konfidensiais di Empreza.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Respeita imaji i reputason di Empreza na tudu si komunikasons."
+                },
+                articlePrefix: "ARTIGU",
+                placeholderName: "[Nomi kompletu]",
+                placeholderAddress: "[Enderesu]",
+                placeholderContact: "[Telefon / Email]",
+                amountPlaceholder: "[Valor]",
+                noticeDefault: "7 dias"
+            },
+            // ===== WOLOF =====
+            wo: {
+                mainTitle: "DOKUMÃTU BU KONTRA",
+                subHeader: "KONTRA BU LIGGÉEY BU CLOSER",
+                intro: "Kontra bii dafay wone naka lañuy liggéey diggante ñi ñu tudd ci suuf.",
+                thCompany: "KËR GI",
+                thCloseuse: "CLOSER BI",
+                labelCompName: "Tur u kër gi:",
+                labelCompAddress: "Adres:",
+                labelCompContact: "Telefon / Email:",
+                labelCloseuseName: "Tur ak sant:",
+                labelCloseuseAddress: "Adres:",
+                labelCloseuseContact: "Telefon / Email:",
+                hereinafter: "Ci gannaaw loolu ñu koy wax « Closer bi ».",
+                art1Title: "ARTIKIL 1: NJËGÉELU KONTRA BI",
+                art1Text: "Kontra bii dafay wone naka la Closer bi di def liggéey bu dëggal commandes yi te yónnee ko ci livreur bi ngir yónnee produits yi.",
+                art2Title: "ARTIKIL 2: MELU LIGGÉEY BI",
+                natureTemplate: "Liggéey bi dañu ko def ci diir bu am limite, dale ko ci {start} ba {end}. Closer bi dafay def liggéeyam ci boppam, dëppoo ak li kër gi di laaj.",
+                art3Title: "ARTIKIL 3: LIGGÉEY YI CLOSER BI DI DEF",
+                missionsIntro: "Closer bi dafay dëkke:",
+                art4Title: "ARTIKIL 4: NJARIÑ",
+                remunTemplate: "Closer bi dina am njariñ bu <strong>{amount}</strong> ci produit bu ñu yónnee ba mu dem.",
+                art5Title: "ARTIKIL 5: ANAM YI ÑUY LIGGÉEY",
+                art5Text: "Waxtu yi dañuy am liberté te dañuy dëppoo ak limu leads yi. Kër gi dafay jox Google Sheet / application ngir toppatoo. Closer bi dafay dëkke bind lëf yi ci yoon.",
+                art6Title: "ARTIKIL 6: SUTURA AK YÉENE",
+                confIntro: "Closer bi dafay dëkke:",
+                art7Title: "ARTIKIL 7: DIIR AK FEY",
+                noticeTemplate: "Kontra bii dañu ko def ci diir bu am limite. Kenn ci ñaar yi mën na ko fey su joxe {notice}.",
+                art8Title: "ARTIKIL 8: XULOO",
+                art8Text: "Su amée xuloo ci naka lañuy jëfandikoo kontra bi, dañuy jéem a gis yoonu jàmm.",
+                doneAtPrefix: "Def nañu ko ci: ",
+                doneAtConnector: ", ci ",
+                sigCompLabel: "XËTUM KËR GI",
+                sigCompMention: "« Jàng naa ko te nangu »",
+                sigCloseuseLabel: "XËTUM CLOSER BI",
+                sigCloseuseMention: "(ak wax ji « Jàng naa ko te nangu »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Jokkante ak clients yi ngir dëggal seen commandes.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Yónnee xibaar yi livreur bi soxla ngir yónnee.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Bind xibaar yi ci Google Sheet walla outil bi.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Dellusi ci ñi xalaatul bañ a dëggal commandes yi."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Sàmm xibaar yi clients yi.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Baña xamle xibaar yu sutura yu kër gi.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Teral melokaanu kër gi ci lépp lu muy wax."
+                },
+                articlePrefix: "ARTIKIL",
+                placeholderName: "[Tur ak sant]",
+                placeholderAddress: "[Adres]",
+                placeholderContact: "[Telefon / Email]",
+                amountPlaceholder: "[Njariñ]",
+                noticeDefault: "7 fan"
+            },
+            // ===== HAUSA =====
+            ha: {
+                mainTitle: "TAKARDAR KWANTIRAGI",
+                subHeader: "KWANTIRAGIN HAƊIN GWIWA NA CLOSER",
+                intro: "Wannan kwantiragi yana bayyana sharuɗɗan haɗin gwiwa tsakanin ɓangarorin da aka ambata a ƙasa.",
+                thCompany: "KAMPANI",
+                thCloseuse: "CLOSER",
+                labelCompName: "Sunan Kampani:",
+                labelCompAddress: "Adireshi:",
+                labelCompContact: "Waya / Imel:",
+                labelCloseuseName: "Cikakken suna:",
+                labelCloseuseAddress: "Adireshi:",
+                labelCloseuseContact: "Waya / Imel:",
+                hereinafter: "Daga nan gaba za a kira shi « Closer ».",
+                art1Title: "SASHE NA 1: MANUFAR KWANTIRAGI",
+                art1Text: "Manufar wannan kwantiragi ita ce bayyana sharuɗɗan da Closer zai yi aiki na tabbatar da oda da kuma tura su ga mai isarwa don isar da kayayyakin Kampani.",
+                art2Title: "SASHE NA 2: YANAYIN HAƊIN GWIWA",
+                natureTemplate: "An yi haɗin gwiwa na ƙayyadadden lokaci, daga {start} zuwa {end}. Closer yana yin ayyukansa da cikakken 'yanci, bisa buƙatun da kuma leads da Kampani ke bayarwa.",
+                art3Title: "SASHE NA 3: AYYUKAN CLOSER",
+                missionsIntro: "Closer ya ɗauki alhaki ya:",
+                art4Title: "SASHE NA 4: ALBASHI",
+                remunTemplate: "Closer zai karɓi albashi na <strong>{amount}</strong> akan kowane kaya da aka isar da kyau.",
+                art5Title: "SASHE NA 5: YANAYIN AIKI",
+                art5Text: "Lokutan aiki suna da sassauci kuma suna dogara da adadin leads da ake tura. Kampani yana ba da Google Sheet / manhaja don bin diddigin. Closer ya ɗauki alhakin shigar da bayanai akai-akai da daidai.",
+                art6Title: "SASHE NA 6: SIRRI DA HAKKI",
+                confIntro: "Closer ya ɗauki alhaki ya:",
+                art7Title: "SASHE NA 7: TSARI DA ƘAREWA",
+                noticeTemplate: "An yi wannan kwantiragi na ƙayyadadden lokaci. Kowane ɓangare na iya ƙare shi ta hanyar ba da sanarwa na {notice}.",
+                art8Title: "SASHE NA 8: RIGIMA",
+                art8Text: "Idan aka samu rigima game da fassarar ko aiwatar da wannan kwantiragi, ɓangarorin za su yi ƙoƙari su sami mafita cikin sulhu.",
+                doneAtPrefix: "An yi a: ",
+                doneAtConnector: ", a ranar ",
+                sigCompLabel: "SAHAN KAMPANI",
+                sigCompMention: "« An karanta kuma an yarda »",
+                sigCloseuseLabel: "SAHAN CLOSER",
+                sigCloseuseMention: "(an riga an ambaci « An karanta kuma an yarda »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Tuntuɓar abokan ciniki don tabbatar da odarsu.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Tura bayanan da ake buƙata ga mai isarwa don tabbatar da isarwa.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Rubuta bayanai da bin diddigin a cikin Google Sheet ko kayan aiki da aka bayar.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Biyi abokan ciniki masu jinkiri don ƙara yawan tabbatarwa."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Tabbatar da kare bayanan abokan ciniki.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Kar a bayyana bayanan sirri na Kampani.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Mutunta hoton da sunan Kampani a duk hanyoyin sadarwa."
+                },
+                articlePrefix: "SASHE",
+                placeholderName: "[Cikakken suna]",
+                placeholderAddress: "[Adireshi]",
+                placeholderContact: "[Waya / Imel]",
+                amountPlaceholder: "[Adadin kuɗi]",
+                noticeDefault: "kwana 7"
+            },
+            // ===== YORUBA =====
+            yo: {
+                mainTitle: "ÌWÉ ÀDÉHÙN",
+                subHeader: "ÀDÉHÙN ÌṢẸ́PỌ̀ CLOSER",
+                intro: "Àdéhùn yìí ń ṣàlàyé àwọn òfin ìṣẹ́pọ̀ láàárín àwọn ẹgbẹ́ tí a dárúkọ ní ìsàlẹ̀.",
+                thCompany: "ILÉ-IṢẸ́",
+                thCloseuse: "CLOSER",
+                labelCompName: "Orúkọ Ilé-iṣẹ́:",
+                labelCompAddress: "Àdìrẹ́ẹ̀sì:",
+                labelCompContact: "Fóònù / Ímeèlì:",
+                labelCloseuseName: "Orúkọ kíkún:",
+                labelCloseuseAddress: "Àdìrẹ́ẹ̀sì:",
+                labelCloseuseContact: "Fóònù / Ímeèlì:",
+                hereinafter: "Láti ìhín lọ a ó máa pè é ní « Closer ».",
+                art1Title: "ABALA 1: ÈTE ÀDÉHÙN",
+                art1Text: "Ète àdéhùn yìí ni láti ṣàlàyé àwọn òfin tí Closer yóò fi ṣiṣẹ́ ìmúdájú àwọn òrder àti fífi wọ́n ránṣẹ́ sí olùmùjúṣe fún ìmùjúṣe àwọn ọjà Ilé-iṣẹ́.",
+                art2Title: "ABALA 2: ÌRÚ ÌṢẸ́PỌ̀",
+                natureTemplate: "A ṣe ìṣẹ́pọ̀ yìí fún àkókò kan pàtó, láti {start} sí {end}. Closer ń ṣe iṣẹ́ rẹ̀ pẹ̀lú òmìnira tíkálẹ̀kálẹ̀, gẹ́gẹ́ bí àìní àti leads tí Ilé-iṣẹ́ ń pèsè.",
+                art3Title: "ABALA 3: ÀWỌN IṢẸ́ CLOSER",
+                missionsIntro: "Closer ń ṣèlérí láti:",
+                art4Title: "ABALA 4: OWÓ-IṢẸ́",
+                remunTemplate: "Closer yóò gba owó-iṣẹ́ <strong>{amount}</strong> fún ọjà kọ̀ọ̀kan tí a fi ṣe ìmùjúṣe dáadáa.",
+                art5Title: "ABALA 5: ÀWỌN ÌPÒ IṢẸ́",
+                art5Text: "Àkókò iṣẹ́ ń yí padà ó sì dá lórí iye leads tí a fi ránṣẹ́. Ilé-iṣẹ́ ń pèsè Google Sheet / application fún ìmọ̀ọ́mọ̀. Closer ń ṣèlérí láti kọ àwọn ìsọfúnni nígbà gbogbo àti dáadáa.",
+                art6Title: "ABALA 6: ÀṢÍRÍ ÀTI ÀWỌN ÒFIN",
+                confIntro: "Closer ń ṣèlérí láti:",
+                art7Title: "ABALA 7: ÀKÓKÒ ÀTI ÌFÒPIN",
+                noticeTemplate: "A ṣe àdéhùn yìí fún àkókò tí a sọ. Ẹnikẹ́ni lè fòpin sí i nípa fífi {notice} hàn.",
+                art8Title: "ABALA 8: ÀWỌN ÌJÀ",
+                art8Text: "Tí ìjà bá wà nípa ìtumọ̀ tàbí ìmúṣe àdéhùn yìí, àwọn ẹgbẹ́ yóò gbìyànjú láti rí ọ̀nà àlàáfíà.",
+                doneAtPrefix: "A ṣe ní: ",
+                doneAtConnector: ", ní ọjọ́ ",
+                sigCompLabel: "ÌBÚWỌ́LÙ ILÉ-IṢẸ́",
+                sigCompMention: "« Mo ti kà á mo sì gba »",
+                sigCloseuseLabel: "ÌBÚWỌ́LÙ CLOSER",
+                sigCloseuseMention: "(tí a ti sọ « Mo ti kà á mo sì gba »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Bá àwọn oníbàárà sọ̀rọ̀ láti ṣe ìmúdájú òrder wọn.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Fi àwọn ìsọfúnni tó yẹ ránṣẹ́ sí olùmùjúṣe láti rí i dájú pé a fi ṣe ìmùjúṣe.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Kọ àwọn ìsọfúnni àti ìmọ̀ọ́mọ̀ sínú Google Sheet tàbí irinṣẹ́ tí a pèsè.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Tẹ̀lé àwọn oníbàárà tí kò tíì pinnu láti mú iye ìmúdájú pọ̀ sí i."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Rí i dájú pé a dáàbò bo àwọn ìsọfúnni oníbàárà.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Má ṣe fi àwọn ìsọfúnni àṣírí Ilé-iṣẹ́ hàn.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Bọ̀wọ̀ fún àwòrán àti orúkọ rere Ilé-iṣẹ́ nínú gbogbo ìbánisọ̀rọ̀."
+                },
+                articlePrefix: "ABALA",
+                placeholderName: "[Orúkọ kíkún]",
+                placeholderAddress: "[Àdìrẹ́ẹ̀sì]",
+                placeholderContact: "[Fóònù / Ímeèlì]",
+                amountPlaceholder: "[Iye owó]",
+                noticeDefault: "ọjọ́ 7"
+            },
+            // ===== IGBO =====
+            ig: {
+                mainTitle: "AKWỤKWỌ NKWEKỌRỊTA",
+                subHeader: "NKWEKỌRỊTA ỌRỤ CLOSER",
+                intro: "Nkwenye a na-akọwa ụkpụrụ nke mmekọrịta n'etiti ndị a kpọtụrụ aha n'okpuru.",
+                thCompany: "ỤLỌ ỌRỤ",
+                thCloseuse: "CLOSER",
+                labelCompName: "Aha Ụlọ ọrụ:",
+                labelCompAddress: "Adreesị:",
+                labelCompContact: "Ekwentị / Email:",
+                labelCloseuseName: "Aha zuru ezu:",
+                labelCloseuseAddress: "Adreesị:",
+                labelCloseuseContact: "Ekwentị / Email:",
+                hereinafter: "Site ugbu a gaa n'ihu a ga-akpọ ya « Closer ».",
+                art1Title: "NKEJI 1: EBUMNOBI NKWEKỌRỊTA",
+                art1Text: "Ebumobi nkwenye a bụ ịkọwa ụkpụrụ nke Closer ga-eji rụọ ọrụ nkwenye nke oda na izipu ha na onye nnyefe maka nnyefe ngwaahịa Ụlọ ọrụ.",
+                art2Title: "NKEJI 2: ỤDỊ MMEKỌRỊTA",
+                natureTemplate: "E mere mmekọrịta a maka oge a kara aka, site na {start} ruo {end}. Closer na-arụ ọrụ ya na nnwere onwe zuru oke, dịka mkpa na leads nke Ụlọ ọrụ na-enye.",
+                art3Title: "NKEJI 3: ỌRỤ CLOSER",
+                missionsIntro: "Closer na-ekwe nkwa:",
+                art4Title: "NKEJI 4: ỤGWỌ ỌRỤ",
+                remunTemplate: "Closer ga-enweta ụgwọ ọrụ nke <strong>{amount}</strong> maka ngwaahịa ọ bụla e nyefere nke ọma.",
+                art5Title: "NKEJI 5: ỌNỌDỤ ỌRỤ",
+                art5Text: "Oge ọrụ na-agbanwe ma dabere na ọnụọgụ leads e zigara. Ụlọ ọrụ na-enye Google Sheet / ngwa maka nsonso. Closer na-ekwe nkwa ide ozi mgbe nile na nke ọma.",
+                art6Title: "NKEJI 6: NZUZO NA ỌRỤ",
+                confIntro: "Closer na-ekwe nkwa:",
+                art7Title: "NKEJI 7: OGE NA NJEDEBE",
+                noticeTemplate: "E mere nkwenye a maka oge a kara aka. Onye ọ bụla nwere ike ịkwụsị ya site n'inye {notice}.",
+                art8Title: "NKEJI 8: ESEMỌKỌ",
+                art8Text: "Ọ bụrụ na e nwee esemokwu gbasara ntụgharị ma ọ bụ mmezu nkwenye a, ndị otu ga-agbalị ịchọta azịza udo.",
+                doneAtPrefix: "E mere na: ",
+                doneAtConnector: ", na ụbọchị ",
+                sigCompLabel: "MBINYE AKA ỤLỌ ỌRỤ",
+                sigCompMention: "« Agụọla m ma kwenye »",
+                sigCloseuseLabel: "MBINYE AKA CLOSER",
+                sigCloseuseMention: "(nke e bu ụzọ kwuo « Agụọla m ma kwenye »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Kpọtụrụ ndị ahịa iji kwado oda ha.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Zipu ozi dị mkpa na onye nnyefe iji hụ na e nyefere ya.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Dee ozi na nsonso n'ime Google Sheet ma ọ bụ ngwá ọrụ e nyere.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Soro ndị ahịa na-enweghị mkpebi iji mụbaa ọnụọgụ nkwenye."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Hụ na e chebere ozi ndị ahịa.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Ekwela kpughee ozi nzuzo nke Ụlọ ọrụ.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Kwanyere ùgwù onyinyo na aha ọma nke Ụlọ ọrụ n'ozi niile."
+                },
+                articlePrefix: "NKEJI",
+                placeholderName: "[Aha zuru ezu]",
+                placeholderAddress: "[Adreesị]",
+                placeholderContact: "[Ekwentị / Email]",
+                amountPlaceholder: "[Ego]",
+                noticeDefault: "ụbọchị 7"
+            },
+            // ===== FULFULDE (Peul) =====
+            ff: {
+                mainTitle: "DOKUMENTU KONTRA",
+                subHeader: "KONTRA GOLLE CLOSER",
+                intro: "Ngal kontra ina hollita sariiji golle hakkunde ɓe innanaa les.",
+                thCompany: "SOOSIYETE",
+                thCloseuse: "CLOSER",
+                labelCompName: "Innde Soosiyete:",
+                labelCompAddress: "Adres:",
+                labelCompContact: "Telefoon / Email:",
+                labelCloseuseName: "Innde timmunde:",
+                labelCloseuseAddress: "Adres:",
+                labelCloseuseContact: "Telefoon / Email:",
+                hereinafter: "Gila jooni maa inniree « Closer ».",
+                art1Title: "ARTIKIL 1: FAANDA KONTRA",
+                art1Text: "Faanda ngal kontra ko hollitde sariiji ɗe Closer waɗata golle jaɓde commandes e neldude ɗum to livreur ngam yahnude peewnugol peewnugol Soosiyete.",
+                art2Title: "ARTIKIL 2: NO GOLLE ƊE MBAYRI",
+                natureTemplate: "Golle ɗee mbaɗaa e nder sahaa joofi, gila {start} haa {end}. Closer ina waɗa golle mum e ndimaagu timmungu, e nder ko Soosiyete ɗaɓɓi e leads ɗe o rokki.",
+                art3Title: "ARTIKIL 3: GOLLE CLOSER",
+                missionsIntro: "Closer ina aawta:",
+                art4Title: "ARTIKIL 4: NJOƁDI",
+                remunTemplate: "Closer heɓata njoɓdi <strong>{amount}</strong> e kala peewnugol peewnaaɗo e jaɓaaɗo.",
+                art5Title: "ARTIKIL 5: SARIIJI GOLLE",
+                art5Text: "Waktuuji golle ɗee ɗe mbayli e ɗe ɗowii e limoore leads ɗe neldaa. Soosiyete ina rokka Google Sheet / app ngam reende. Closer ina aawta binndude humpitooji e sahaa e e ndee.",
+                art6Title: "ARTIKIL 6: GUURE E WAƊDE",
+                confIntro: "Closer ina aawta:",
+                art7Title: "ARTIKIL 7: SAHAA E JOOFNUDE",
+                noticeTemplate: "Ngal kontra waɗaa e nder sahaa joofi. Kala ɓe mbaawi joofnude ɗum e rokkal {notice}.",
+                art8Title: "ARTIKIL 8: LUURAL",
+                art8Text: "So luural waɗii e firo walla e huutoraade ngal kontra, ɓe ƴeewoytoo yiyde peewnugol jam.",
+                doneAtPrefix: "Waɗaa e: ",
+                doneAtConnector: ", e ñalawma ",
+                sigCompLabel: "SIIN SOOSIYETE",
+                sigCompMention: "« Mi tarrii mi jaɓii »",
+                sigCloseuseLabel: "SIIN CLOSER",
+                sigCloseuseMention: "(ina ardi e konngol « Mi tarrii mi jaɓii »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Jokkondir e clients ngam jaɓde commandes maɓɓe.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Neldu humpitooji ɗe livreur ɗaɓɓi ngam yahnude.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Binndu humpitooji e reende e nder Google Sheet walla kuutorɗe rokkaaɗe.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Jokkondir e clients ɓe njaɓaani ngam ɓeydude limoore jaɓde."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Hoolkisa reende humpitooji clients.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Woto hollit humpitooji guure Soosiyete.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Teddin natal e innde Soosiyete e nder kala jokkondiral."
+                },
+                articlePrefix: "ARTIKIL",
+                placeholderName: "[Innde timmunde]",
+                placeholderAddress: "[Adres]",
+                placeholderContact: "[Telefoon / Email]",
+                amountPlaceholder: "[Njoɓdi]",
+                noticeDefault: "balɗe 7"
+            },
+            // ===== BAMBARA =====
+            bm: {
+                mainTitle: "KONTRATI DOKUMAN",
+                subHeader: "CLOSER BAARA KƐLƐN KONTRATI",
+                intro: "Nin kontrati bɛ baara kɛlen sariyaw sɛbɛn jɛkuluw cɛ minnu tɔgɔ fɔra duguma.",
+                thCompany: "KƆMƆNƐ",
+                thCloseuse: "CLOSER",
+                labelCompName: "Kɔmɔnɛ tɔgɔ:",
+                labelCompAddress: "Adresi:",
+                labelCompContact: "Telefɔni / Email:",
+                labelCloseuseName: "Tɔgɔ dafalen:",
+                labelCloseuseAddress: "Adresi:",
+                labelCloseuseContact: "Telefɔni / Email:",
+                hereinafter: "Yan kɔfɛ a bɛ wele « Closer ».",
+                art1Title: "ARTIKILI 1: KONTRATI KUNLA",
+                art1Text: "Nin kontrati kunla ye ka sariyaw sɛbɛn Closer bɛ minnu kɔrɔ ka oda wale kɛ ani ka u ci livreur ma ka kɔmɔnɛ fɛnw ci.",
+                art2Title: "ARTIKILI 2: BAARA KƐLƐN JIRANYA",
+                natureTemplate: "Baara kɛlen kɛra waati dɔ kɔrɔ, ka bɔ {start} ka taa {end}. Closer bɛ a baara kɛ a yɛrɛ ye, kɔmɔnɛ ka mun kɔrɔ ni leads minnu bɛ di.",
+                art3Title: "ARTIKILI 3: CLOSER BAARAW",
+                missionsIntro: "Closer bɛ lajɛ:",
+                art4Title: "ARTIKILI 4: SARA",
+                remunTemplate: "Closer bɛ sara sɔrɔ <strong>{amount}</strong> fɛn o fɛn la min ciira ka ɲɛ.",
+                art5Title: "ARTIKILI 5: BAARA SIRIW",
+                art5Text: "Baara waatiw bɛ yɛlɛma ani u bɛ bɔ leads hakɛ la minnu ciira. Kɔmɔnɛ bɛ Google Sheet / app di ka kɔlɔsi kɛ. Closer bɛ lajɛ ka kunnafoniw sɛbɛn tuma o tuma ani ka ɲɛ.",
+                art6Title: "ARTIKILI 6: GUNDO NI WAJIBIYAW",
+                confIntro: "Closer bɛ lajɛ:",
+                art7Title: "ARTIKILI 7: WAATI NI BAN",
+                noticeTemplate: "Nin kontrati kɛra waati dɔ kɔrɔ. Jɛkulu o jɛkulu bɛ se ka a ban ni {notice} di.",
+                art8Title: "ARTIKILI 8: KƐLƐW",
+                art8Text: "Ni kɛlɛ kɛra nin kontrati fasara walima a baara kɛcogo la, jɛkuluw bɛ ɲɛnajɛ ka ɲɛnajɛ sɔrɔ.",
+                doneAtPrefix: "A kɛra: ",
+                doneAtConnector: ", don ",
+                sigCompLabel: "KƆMƆNƐ SIGI",
+                sigCompMention: "« N ye a kalan n ye a sɔn »",
+                sigCloseuseLabel: "CLOSER SIGI",
+                sigCloseuseMention: "(a ɲɛfɔlen « N ye a kalan n ye a sɔn »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Ka jɛkuluw wele ka u ka oda wale.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Ka kunnafoniw ci livreur ma ka ci kɛ.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Ka kunnafoniw ni kɔlɔsi sɛbɛn Google Sheet walima baara min bɛ di.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Ka jɛkuluw wele minnu ma a sɔn fɔlɔ ka wale hakɛ yiriwa."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Ka jɛkuluw ka kunnafoniw lakana.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Kana kɔmɔnɛ ka gundo kunnafoniw fɔ.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Ka kɔmɔnɛ ka jirisigiden ni tɔgɔ ɲuman bonya a ka kuma bɛɛ la."
+                },
+                articlePrefix: "ARTIKILI",
+                placeholderName: "[Tɔgɔ dafalen]",
+                placeholderAddress: "[Adresi]",
+                placeholderContact: "[Telefɔni / Email]",
+                amountPlaceholder: "[Sara]",
+                noticeDefault: "don 7"
+            },
+            // ===== KISWAHILI =====
+            sw: {
+                mainTitle: "WARAKA WA MKATABA",
+                subHeader: "MKATABA WA USHIRIKIANO WA CLOSER",
+                intro: "Mkataba huu unaweka masharti ya ushirikiano kati ya wahusika walioainishwa hapa chini.",
+                thCompany: "KAMPUNI",
+                thCloseuse: "CLOSER",
+                labelCompName: "Jina la Kampuni:",
+                labelCompAddress: "Anwani:",
+                labelCompContact: "Simu / Barua pepe:",
+                labelCloseuseName: "Jina kamili:",
+                labelCloseuseAddress: "Anwani:",
+                labelCloseuseContact: "Simu / Barua pepe:",
+                hereinafter: "Baadaye ataitwa « Closer ».",
+                art1Title: "KIFUNGU CHA 1: MADHUMUNI YA MKATABA",
+                art1Text: "Madhumuni ya mkataba huu ni kufafanua masharti ambayo Closer atatekeleza kazi ya kuthibitisha maagizo na kuyaelekeza kwa msambazaji kwa ajili ya uwasilishaji wa bidhaa za Kampuni.",
+                art2Title: "KIFUNGU CHA 2: ASILI YA USHIRIKIANO",
+                natureTemplate: "Ushirikiano umefanywa kwa muda maalum, kuanzia {start} hadi {end}. Closer anatekeleza majukumu yake kwa uhuru kamili, kulingana na mahitaji na leads zinazotolewa na Kampuni.",
+                art3Title: "KIFUNGU CHA 3: MAJUKUMU YA CLOSER",
+                missionsIntro: "Closer anajitolea:",
+                art4Title: "KIFUNGU CHA 4: MALIPO",
+                remunTemplate: "Closer atapokea malipo ya <strong>{amount}</strong> kwa kila bidhaa iliyowasilishwa kwa ufanisi.",
+                art5Title: "KIFUNGU CHA 5: MASHARTI YA KAZI",
+                art5Text: "Saa za kazi ni rahisi na zinategemea idadi ya leads zinazotumwa. Kampuni inatoa Google Sheet / programu kwa ufuatiliaji na usimamizi. Closer anajitolea kuingiza taarifa mara kwa mara na kwa usahihi.",
+                art6Title: "KIFUNGU CHA 6: USIRI NA WAJIBU",
+                confIntro: "Closer anajitolea:",
+                art7Title: "KIFUNGU CHA 7: MUDA NA KUKOMESHA",
+                noticeTemplate: "Mkataba huu umefanywa kwa muda maalum. Kila upande unaweza kuukomesha kwa kutoa taarifa ya {notice}.",
+                art8Title: "KIFUNGU CHA 8: MIGOGORO",
+                art8Text: "Katika kesi ya mgogoro kuhusu tafsiri au utekelezaji wa mkataba huu, wahusika watajaribu kupata suluhisho la amani.",
+                doneAtPrefix: "Imefanywa katika: ",
+                doneAtConnector: ", tarehe ",
+                sigCompLabel: "SAHIHI YA KAMPUNI",
+                sigCompMention: "« Nimesoma na nimeidhinisha »",
+                sigCloseuseLabel: "SAHIHI YA CLOSER",
+                sigCloseuseMention: "(ikitanguliwa na kauli « Nimesoma na nimeidhinisha »)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "Wasiliana na wateja ili kuthibitisha maagizo yao.",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "Peleka taarifa muhimu kwa msambazaji ili kuhakikisha uwasilishaji.",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "Andika taarifa na ufuatiliaji katika Google Sheet au zana iliyotolewa.",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "Fuatilia wateja wasioamua ili kuongeza kiwango cha uthibitisho."
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "Hakikisha ulinzi wa data za wateja.",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "Usifichue taarifa za siri za Kampuni.",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "Heshimu picha na sifa ya Kampuni katika mawasiliano yote."
+                },
+                articlePrefix: "KIFUNGU",
+                placeholderName: "[Jina kamili]",
+                placeholderAddress: "[Anwani]",
+                placeholderContact: "[Simu / Barua pepe]",
+                amountPlaceholder: "[Kiasi]",
+                noticeDefault: "siku 7"
+            },
+            // ===== AMHARIC =====
+            am: {
+                mainTitle: "የውል ሰነድ",
+                subHeader: "የክሎዘር የትብብር ውል",
+                intro: "ይህ ውል ከታች በተጠቀሱት ወገኖች መካከል ያለውን የትብብር ሁኔታዎች ይገልጻል።",
+                thCompany: "ኩባንያ",
+                thCloseuse: "ክሎዘር",
+                labelCompName: "የኩባንያ ስም:",
+                labelCompAddress: "አድራሻ:",
+                labelCompContact: "ስልክ / ኢሜይል:",
+                labelCloseuseName: "ሙሉ ስም:",
+                labelCloseuseAddress: "አድራሻ:",
+                labelCloseuseContact: "ስልክ / ኢሜይል:",
+                hereinafter: "ከዚህ በኋላ « ክሎዘር » ተብሎ ይጠራል።",
+                art1Title: "አንቀጽ 1፡ የውሉ ዓላማ",
+                art1Text: "የዚህ ውል ዓላማ ክሎዘር ትዕዛዞችን የማረጋገጥ እና ወደ አቅራቢው የመላክ ሥራ የሚፈጽምባቸውን ሁኔታዎች መግለጽ ነው።",
+                art2Title: "አንቀጽ 2፡ የትብብሩ ባህሪ",
+                natureTemplate: "ትብብሩ ለተወሰነ ጊዜ ተደርጓል፣ ከ {start} እስከ {end}። ክሎዘር ሥራዎቹን በሙሉ ነፃነት፣ በኩባንያው በሚሰጡት ፍላጎቶችና leads መሠረት ያከናውናል።",
+                art3Title: "አንቀጽ 3፡ የክሎዘር ሥራዎች",
+                missionsIntro: "ክሎዘር የሚከተሉትን ይቀበላል:",
+                art4Title: "አንቀጽ 4፡ ክፍያ",
+                remunTemplate: "ክሎዘር ለእያንዳንዱ በትክክል የተላከ ምርት <strong>{amount}</strong> ክፍያ ይቀበላል።",
+                art5Title: "አንቀጽ 5፡ የሥራ ሁኔታዎች",
+                art5Text: "የሥራ ሰዓቶች ተለዋዋጭ ናቸው እና በሚላኩ leads መጠን ላይ ይመረኮዛሉ። ኩባንያው ለክትትል Google Sheet / መተግበሪያ ይሰጣል። ክሎዘር መረጃውን በመደበኛነትና በትክክል ለመመዝገብ ይቀበላል።",
+                art6Title: "አንቀጽ 6፡ ሚስጥራዊነትና ግዴታዎች",
+                confIntro: "ክሎዘር የሚከተሉትን ይቀበላል:",
+                art7Title: "አንቀጽ 7፡ ጊዜና መቋረጥ",
+                noticeTemplate: "ይህ ውል ለተወሰነ ጊዜ ተደርጓል። ማንኛውም ወገን {notice} በመስጠት ሊያቋርጠው ይችላል።",
+                art8Title: "አንቀጽ 8፡ ክርክሮች",
+                art8Text: "ስለ ውሉ ትርጉም ወይም አፈጻጸም ክርክር ከተፈጠረ፣ ወገኖቹ ሰላማዊ መፍትሔ ለማግኘት ይጥራሉ።",
+                doneAtPrefix: "ተደርጓል በ: ",
+                doneAtConnector: "፣ በ ",
+                sigCompLabel: "የኩባንያ ፊርማ",
+                sigCompMention: "« አንብቤ ተስማምቻለሁ »",
+                sigCloseuseLabel: "የክሎዘር ፊርማ",
+                sigCloseuseMention: "(« አንብቤ ተስማምቻለሁ » በሚል ቃል ተቀድሟል)",
+                missions: {
+                    "Contacter les prospects/clients pour confirmer leurs commandes.": "ደንበኞችን በማነጋገር ትዕዛዞቻቸውን ማረጋገጥ።",
+                    "Transmettre les informations nécessaires au livreur pour assurer la livraison.": "ለአቅራቢው አስፈላጊ መረጃ ማስተላለፍ።",
+                    "Reporter les informations et le suivi dans la feuille Google Sheet ou l'outil mis à disposition.": "መረጃና ክትትልን በ Google Sheet ወይም በተሰጠው መሣሪያ ላይ መመዝገብ።",
+                    "Relancer les prospects indécis pour maximiser le taux de confirmation.": "ያልወሰኑ ደንበኞችን መከታተል።"
+                },
+                clauses: {
+                    "Garantir la protection des données clients.": "የደንበኞችን መረጃ መጠበቅ።",
+                    "Ne pas divulguer les informations confidentielles de l'Entreprise.": "የኩባንያውን ሚስጥራዊ መረጃ አለማጋለጥ።",
+                    "Respecter l'image et la réputation de l'Entreprise dans toutes ses communications.": "በሁሉም ግንኙነቶች የኩባንያውን ምስልና ስም ማክበር።"
+                },
+                articlePrefix: "አንቀጽ",
+                placeholderName: "[ሙሉ ስም]",
+                placeholderAddress: "[አድራሻ]",
+                placeholderContact: "[ስልክ / ኢሜይል]",
+                amountPlaceholder: "[መጠን]",
+                noticeDefault: "7 ቀናት"
+            }
+        };
+
+        function changeContractLanguage(lang) {
+            currentLang = lang;
+            updatePreview();
+        }
+
+        function t(key) {
+            return translations[currentLang][key] || translations.fr[key] || key;
+        }
+
+        // Initialization
+        // Variables pour la signature destinataire
+        let currentSigningContract = null;
+        let signingCanvas, signingCtx, isSigningDrawing = false;
+
+        window.addEventListener("DOMContentLoaded", () => {
+            // Vérifier s'il y a un token de signature dans l'URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const signToken = urlParams.get('sign');
+
+            if (signToken) {
+                // Mode signature destinataire
+                initSigningCanvas();
+                loadContractForSigning(signToken);
+            } else {
+                // Mode normal
+                loadCompanyProfile();
+                renderDashboard();
+                initSignatureCanvas();
+                updatePreview();
+            }
+        });
+
+        // Navigation Router
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(viewId).classList.add('active');
+            
+            const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(a => a.getAttribute('onclick').includes(viewId));
+            if(activeNav) activeNav.classList.add('active');
+
+            const titles = {
+                'dashboardView': 'Tableau de bord',
+                'generatorView': 'Générateur de Contrat',
+                'contractsView': 'Mes Contrats',
+                'companyView': 'Mon Entreprise',
+                'modelsView': 'Mes Modèles',
+                'settingsView': 'Paramètres'
+            };
+            document.getElementById('pageTitle').innerText = titles[viewId] || 'ECOM ACADEMY PRO';
+
+            if(viewId === 'contractsView') renderAllContracts();
+            if(viewId === 'dashboardView') renderDashboard();
+        }
+
+        function startNewContract() {
+            switchView('generatorView');
+            currentStep = 1;
+            currentLang = "fr";
+            const langSelect = document.getElementById('contractLang');
+            if (langSelect) langSelect.value = "fr";
+            updateStepVisibility();
+            updatePreview();
+        }
+
+        // Wizard Step Manager
+        function changeStep(delta) {
+            if(delta === 1 && !validateCurrentStep()) return;
+            currentStep += delta;
+            if(currentStep < 1) currentStep = 1;
+            if(currentStep > totalSteps) currentStep = totalSteps;
+            updateStepVisibility();
+        }
+
+        function updateStepVisibility() {
+            for(let i = 1; i <= totalSteps; i++) {
+                document.getElementById(`step${i}`).style.display = (i === currentStep) ? 'block' : 'none';
+                const bubble = document.getElementById(`stepBubble${i}`);
+                if(i < currentStep) {
+                    bubble.className = "step-item completed";
+                } else if(i === currentStep) {
+                    bubble.className = "step-item active";
+                } else {
+                    bubble.className = "step-item";
+                }
+            }
+
+            document.getElementById('progressLine').style.width = `${((currentStep - 1) / (totalSteps - 1)) * 100}%`;
+            document.getElementById('btnPrev').style.display = (currentStep === 1) ? 'none' : 'inline-flex';
+            document.getElementById('btnNext').style.display = (currentStep === totalSteps) ? 'none' : 'inline-flex';
+            document.getElementById('btnGenerate').style.display = (currentStep === totalSteps) ? 'inline-flex' : 'none';
+        }
+
+        function validateCurrentStep() {
+            if(currentStep === 1) {
+                const name = document.getElementById('compName').value.trim();
+                const email = document.getElementById('compEmail').value.trim();
+                if(!name) {
+                    alert("Veuillez renseigner le nom de l'entreprise.");
+                    return false;
+                }
+                if(!email) {
+                    alert("Veuillez renseigner l'email de l'expéditeur (il recevra le contrat signé).");
+                    return false;
+                }
+            } else if(currentStep === 2) {
+                const lName = document.getElementById('closeuseLastName').value.trim();
+                const fName = document.getElementById('closeuseFirstName').value.trim();
+                const email = document.getElementById('closeuseEmail').value.trim();
+                if(!lName || !fName) {
+                    alert("Veuillez remplir le nom et prénom de la closeuse.");
+                    return false;
+                }
+                if(!email) {
+                    alert("Veuillez renseigner l'email du destinataire (il/elle recevra le lien de signature).");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Real-time Preview Engine (with language support)
+        function updatePreview() {
+            const lang = currentLang;
+            const tr = translations[lang] || translations.fr;
+
+            // RTL support for Arabic
+            const paper = document.getElementById('contractPaper');
+            if (lang === 'ar') {
+                paper.setAttribute('dir', 'rtl');
+                paper.style.textAlign = 'right';
+                paper.style.fontFamily = "'Noto Naskh Arabic', 'Amiri', 'Times New Roman', serif";
+            } else {
+                paper.setAttribute('dir', 'ltr');
+                paper.style.textAlign = 'left';
+                paper.style.fontFamily = "'Liberation Serif', 'Times New Roman', Times, serif";
+            }
+
+            // === Static labels ===
+            document.getElementById('docMainTitle').innerText = tr.mainTitle;
+            document.getElementById('docSubHeader').innerText = tr.subHeader;
+            document.getElementById('docIntro').innerText = tr.intro;
+            document.getElementById('docThCompany').innerText = tr.thCompany;
+            document.getElementById('docThCloseuse').innerText = tr.thCloseuse;
+            document.getElementById('docLabelCompName').innerText = tr.labelCompName;
+            document.getElementById('docLabelCompAddress').innerText = tr.labelCompAddress;
+            document.getElementById('docLabelCompContact').innerText = tr.labelCompContact;
+            document.getElementById('docLabelCloseuseName').innerText = tr.labelCloseuseName;
+            document.getElementById('docLabelCloseuseAddress').innerText = tr.labelCloseuseAddress;
+            document.getElementById('docLabelCloseuseContact').innerText = tr.labelCloseuseContact;
+            document.getElementById('docHereinafter').innerText = tr.hereinafter;
+            document.getElementById('docArt1Title').innerText = tr.art1Title;
+            document.getElementById('docArt1Text').innerText = tr.art1Text;
+            document.getElementById('docArt2Title').innerText = tr.art2Title;
+            document.getElementById('docArt3Title').innerText = tr.art3Title;
+            document.getElementById('docMissionsIntro').innerText = tr.missionsIntro;
+            document.getElementById('docArt4Title').innerText = tr.art4Title;
+            document.getElementById('docArt5Title').innerText = tr.art5Title;
+            document.getElementById('docArt5Text').innerText = tr.art5Text;
+            document.getElementById('docArt6Title').innerText = tr.art6Title;
+            document.getElementById('docConfIntro').innerText = tr.confIntro;
+            document.getElementById('docArt7Title').innerText = tr.art7Title;
+            document.getElementById('docArt8Title').innerText = tr.art8Title;
+            document.getElementById('docArt8Text').innerText = tr.art8Text;
+            document.getElementById('docSigCompLabel').innerText = tr.sigCompLabel;
+            document.getElementById('docSigCompMention').innerText = tr.sigCompMention;
+            document.getElementById('docSigCloseuseLabel').innerText = tr.sigCloseuseLabel;
+            document.getElementById('docSigCloseuseMention').innerText = tr.sigCloseuseMention;
+
+            // === Dynamic data ===
+            // Company
+            const compName = document.getElementById('compName').value || "ECOM ACADEMY PRO";
+            document.getElementById('docCompName').innerText = compName;
+            document.getElementById('docAppName').innerText = compName;
+            document.getElementById('docCompAddress').innerText = document.getElementById('compAddress').value || "Cotonou, Bénin";
+            
+            const phone = document.getElementById('compPhone').value || "--";
+            const email = document.getElementById('compEmail').value || "--";
+            document.getElementById('docCompContact').innerText = `${phone} / ${email}`;
+
+            // Closeuse
+            const cName = `${document.getElementById('closeuseFirstName').value} ${document.getElementById('closeuseLastName').value}`.trim() || tr.placeholderName;
+            document.getElementById('docCloseuseName').innerText = cName;
+            document.getElementById('docCloseuseAddress').innerText = document.getElementById('closeuseAddress').value || tr.placeholderAddress;
+            
+            const cPhone = document.getElementById('closeusePhone').value || "--";
+            const cEmail = document.getElementById('closeuseEmail').value || "--";
+            document.getElementById('docCloseuseContact').innerText = `${cPhone} / ${cEmail}`;
+
+            // Dates & Nature
+            const sDateRaw = document.getElementById('startDate').value;
+            const eDateRaw = document.getElementById('endDate').value;
+            const sDate = sDateRaw ? formatDate(sDateRaw, lang) : formatDate("2026-09-06", lang);
+            const eDate = eDateRaw ? formatDate(eDateRaw, lang) : formatDate("2026-12-20", lang);
+            document.getElementById('docNatureText').innerText = tr.natureTemplate.replace('{start}', sDate).replace('{end}', eDate);
+
+            // Date & Fait à / Done at / etc.
+            const today = formatDate(new Date().toISOString().slice(0,10), lang);
+            const city = document.getElementById('compCity').value || "Cotonou";
+            const doneAtEl = document.getElementById('docDoneAt');
+            doneAtEl.innerHTML = `${tr.doneAtPrefix}<span id="docCitySign">${city}</span>${tr.doneAtConnector}<span id="docDateSign">${today}</span>`;
+
+            // Missions (translate known ones, keep custom as-is)
+            const missionsList = document.getElementById('docMissionsList');
+            missionsList.innerHTML = "";
+            document.querySelectorAll('.mission-cb:checked').forEach(cb => {
+                const li = document.createElement('li');
+                li.innerText = tr.missions[cb.value] || cb.value;
+                missionsList.appendChild(li);
+            });
+            if(document.getElementById('customMissions').value.trim()) {
+                const li = document.createElement('li');
+                li.innerText = document.getElementById('customMissions').value;
+                missionsList.appendChild(li);
+            }
+
+            // Remuneration
+            const commAmount = document.getElementById('commAmount').value || tr.amountPlaceholder;
+            document.getElementById('docRemunText').innerHTML = tr.remunTemplate.replace('{amount}', commAmount);
+
+            // Confidentiality
+            const confList = document.getElementById('docConfList');
+            confList.innerHTML = "";
+            document.querySelectorAll('.clause-cb:checked').forEach(cb => {
+                const li = document.createElement('li');
+                li.innerText = tr.clauses[cb.value] || cb.value;
+                confList.appendChild(li);
+            });
+
+            // Notice
+            const notice = document.getElementById('noticePeriod').value || tr.noticeDefault;
+            document.getElementById('docNoticeText').innerText = tr.noticeTemplate.replace('{notice}', notice);
+
+            // Custom Clauses (kept in original language as user input)
+            const customSection = document.getElementById('docCustomClausesSection');
+            customSection.innerHTML = "";
+            customClausesList.forEach((cl, idx) => {
+                if(cl.title && cl.text) {
+                    const div = document.createElement('div');
+                    const artNum = 9 + idx;
+                    div.innerHTML = `<div class="doc-section-title">${tr.articlePrefix} ${artNum} : ${cl.title.toUpperCase()}</div><p>${cl.text}</p>`;
+                    customSection.appendChild(div);
+                }
+            });
+        }
+
+        // Helper: format date according to language
+        function formatDate(dateStr, lang) {
+            if(!dateStr) return "";
+            const d = new Date(dateStr + "T00:00:00");
+            if(isNaN(d)) return dateStr;
+            const localeMap = {
+                fr: 'fr-FR',
+                en: 'en-GB',
+                es: 'es-ES',
+                pt: 'pt-PT',
+                ar: 'ar-MA',
+                sw: 'sw-TZ',
+                am: 'am-ET',
+                // African languages without strong native locale support fall back to English or French
+                kri: 'en-GB',
+                pov: 'pt-PT',
+                wo: 'fr-FR',
+                ha: 'en-GB',
+                yo: 'en-GB',
+                ig: 'en-GB',
+                ff: 'fr-FR',
+                bm: 'fr-FR'
+            };
+            return d.toLocaleDateString(localeMap[lang] || 'fr-FR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        // Image Logo Loader
+        function handleLogoUpload(event) {
+            const file = event.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    logoBase64 = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Custom Clause Dynamic Creator
+        function addCustomClauseInput() {
+            const id = Date.now();
+            customClausesList.push({ id, title: "", text: "" });
+            renderCustomClausesInputs();
+        }
+
+        function renderCustomClausesInputs() {
+            const container = document.getElementById('customClausesContainer');
+            container.innerHTML = "";
+            customClausesList.forEach((cl, index) => {
+                const div = document.createElement('div');
+                div.className = "clause-item";
+                div.innerHTML = `
+                    <div class="clause-header">
+                        <strong>Clause #${index + 1}</strong>
+                        <button class="btn btn-danger btn-sm" onclick="removeCustomClause(${cl.id})"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <input type="text" placeholder="Titre de la clause" value="${cl.title}" oninput="updateClauseData(${cl.id}, 'title', this.value)" style="margin-bottom:8px;">
+                    <textarea placeholder="Contenu de la clause..." oninput="updateClauseData(${cl.id}, 'text', this.value)">${cl.text}</textarea>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateClauseData(id, field, value) {
+            const item = customClausesList.find(c => c.id === id);
+            if(item) {
+                item[field] = value;
+                updatePreview();
+            }
+        }
+
+        function removeCustomClause(id) {
+            customClausesList = customClausesList.filter(c => c.id !== id);
+            renderCustomClausesInputs();
+            updatePreview();
+        }
+
+        // Signature Canvas Drawer
+        let canvas, ctx, isDrawing = false;
+        function initSignatureCanvas() {
+            canvas = document.getElementById('sigCanvas');
+            ctx = canvas.getContext('2d');
+            canvas.width = 450;
+            canvas.height = 150;
+
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('touchstart', (e) => { startDrawing(e.touches[0]); });
+            canvas.addEventListener('touchmove', (e) => { draw(e.touches[0]); e.preventDefault(); });
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function draw(e) {
+            if(!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+        }
+
+        function stopDrawing() { isDrawing = false; }
+        function clearSignatureCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        function openSignatureModal(target) {
+            currentSigTarget = target;
+            clearSignatureCanvas();
+            document.getElementById('sigModal').classList.add('active');
+        }
+
+        function saveSignatureCanvas() {
+            const data = canvas.toDataURL();
+            if(currentSigTarget === 'company') {
+                compSignatureData = data;
+                document.getElementById('docSigCompImg').src = data;
+                document.getElementById('docSigCompImg').style.display = "block";
+                document.getElementById('compSigStatus').innerText = "✓ Signature enregistrée";
+            } else {
+                closeuseSignatureData = data;
+                document.getElementById('docSigCloseuseImg').src = data;
+                document.getElementById('docSigCloseuseImg').style.display = "block";
+                document.getElementById('closeuseSigStatus').innerText = "✓ Signature enregistrée";
+            }
+            document.getElementById('sigModal').classList.remove('active');
+        }
+
+        // Storage & Generation Operations
+        function getSavedContracts() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY_CONTRACTS) || "[]");
+        }
+
+        async function generateAndSaveContract() {
+            const senderEmail = document.getElementById('compEmail').value.trim();
+            const recipientEmail = document.getElementById('closeuseEmail').value.trim();
+
+            if (!senderEmail || !recipientEmail) {
+                alert("Les emails de l'expéditeur et du destinataire sont obligatoires.");
+                return;
+            }
+
+            const contracts = getSavedContracts();
+            const year = new Date().getFullYear();
+            const contractNum = `CTR-${year}-${String(contracts.length + 1).padStart(4, '0')}`;
+            const signingToken = generateSigningToken();
+            
+            const newContract = {
+                id: Date.now(),
+                number: contractNum,
+                date: new Date().toLocaleDateString('fr-FR'),
+                company: document.getElementById('compName').value,
+                closeuse: `${document.getElementById('closeuseFirstName').value} ${document.getElementById('closeuseLastName').value}`,
+                senderEmail: senderEmail,
+                recipientEmail: recipientEmail,
+                status: (compSignatureData && closeuseSignatureData) ? "Signé" : "En attente",
+                language: currentLang,
+                signingToken: signingToken,
+                htmlContent: document.getElementById('contractPaper').innerHTML,
+                companySignature: compSignatureData || null,
+                closeuseSignature: closeuseSignatureData || null,
+                createdAt: new Date().toISOString()
+            };
+
+            // 1. Sauvegarde locale (fonctionne toujours)
+            contracts.unshift(newContract);
+            localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(contracts));
+
+            // 2. Tentative d'envoi vers Supabase (si configuré)
+            let onlineSuccess = false;
+            if (supabaseClient) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('contracts')
+                        .insert([{
+                            number: contractNum,
+                            company_name: newContract.company,
+                            closeuse_name: newContract.closeuse,
+                            sender_email: senderEmail,
+                            recipient_email: recipientEmail,
+                            status: newContract.status,
+                            language: currentLang,
+                            signing_token: signingToken,
+                            html_content: newContract.htmlContent,
+                            company_signature: compSignatureData || null,
+                            closeuse_signature: closeuseSignatureData || null
+                        }])
+                        .select();
+
+                    if (error) throw error;
+                    onlineSuccess = true;
+                    console.log("Contrat sauvegardé sur Supabase:", data);
+                } catch (err) {
+                    console.warn("Erreur Supabase (le contrat reste sauvé localement):", err.message);
+                }
+            }
+
+            // 3. Message à l'utilisateur + tentative d'envoi du lien
+            const signingLink = `${APP_BASE_URL}?sign=${signingToken}`;
+            
+            let message = `Contrat ${contractNum} généré avec succès !\n\n`;
+            message += `📧 Expéditeur : ${senderEmail}\n`;
+            message += `📧 Destinataire : ${recipientEmail}\n\n`;
+            
+            if (onlineSuccess) {
+                message += `✅ Contrat enregistré en ligne.\n`;
+                message += `🔗 Lien de signature :\n${signingLink}\n\n`;
+
+                // Envoi automatique du lien via Edge Function
+                const emailHtml = `
+                    <h2>Demande de signature de contrat</h2>
+                    <p>Bonjour ${newContract.closeuse},</p>
+                    <p>Vous avez reçu un contrat de collaboration de la part de <strong>${newContract.company}</strong>.</p>
+                    <p>Cliquez sur le bouton ci-dessous pour lire et signer le contrat :</p>
+                    <p style="margin:24px 0;">
+                        <a href="${signingLink}" style="background:#2563eb;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;">
+                            Signer le contrat
+                        </a>
+                    </p>
+                    <p style="color:#64748b;font-size:13px;">Ou copiez ce lien :<br>${signingLink}</p>
+                `;
+
+                const emailSent = await sendEmailViaFunction(
+                    recipientEmail,
+                    `Signature requise - Contrat ${contractNum}`,
+                    emailHtml
+                );
+
+                if (emailSent) {
+                    message += `📧 Email de signature envoyé automatiquement à ${recipientEmail}`;
+                } else {
+                    message += `⚠️ L'email n'a pas pu être envoyé automatiquement.\nEnvoyez ce lien manuellement au destinataire.`;
+                }
+            } else {
+                message += `💾 Contrat enregistré localement.\n\n`;
+                message += `⚠️ Vérifiez la connexion Supabase.`;
+            }
+
+            alert(message);
+            switchView('contractsView');
+        }
+
+        function renderDashboard() {
+            const contracts = getSavedContracts();
+            const todayStr = new Date().toLocaleDateString('fr-FR');
+
+            document.getElementById('statTotal').innerText = contracts.length;
+            document.getElementById('statToday').innerText = contracts.filter(c => c.date === todayStr).length;
+            document.getElementById('statPending').innerText = contracts.filter(c => c.status === "En attente").length;
+            document.getElementById('statSigned').innerText = contracts.filter(c => c.status === "Signé").length;
+
+            const tbody = document.getElementById('recentContractsTable');
+            tbody.innerHTML = "";
+            contracts.slice(0, 5).forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${c.number}</strong></td>
+                    <td>${c.closeuse}</td>
+                    <td>${c.date}</td>
+                    <td><span class="badge ${c.status === 'Signé' ? 'badge-signed' : 'badge-pending'}">${c.status}</span></td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick="downloadPDFById(${c.id})"><i class="fa-solid fa-download"></i> PDF</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderAllContracts() {
+            const contracts = getSavedContracts();
+            const tbody = document.getElementById('allContractsTable');
+            tbody.innerHTML = "";
+            contracts.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${c.number}</strong></td>
+                    <td>${c.closeuse}</td>
+                    <td>${c.date}</td>
+                    <td><span class="badge ${c.status === 'Signé' ? 'badge-signed' : 'badge-pending'}">${c.status}</span></td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick="downloadPDFById(${c.id})"><i class="fa-solid fa-download"></i> PDF</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteContract(${c.id})"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function deleteContract(id) {
+            if(confirm("Voulez-vous vraiment supprimer ce contrat ?")) {
+                let contracts = getSavedContracts().filter(c => c.id !== id);
+                localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(contracts));
+                renderAllContracts();
+                renderDashboard();
+            }
+        }
+
+        function downloadPDFById(id) {
+            const contract = getSavedContracts().find(c => c.id === id);
+            if(!contract) return;
+
+            const container = document.createElement('div');
+            container.className = "document-paper";
+            container.innerHTML = contract.htmlContent;
+            
+            const opt = {
+                margin:       10,
+                filename:     `${contract.number}_${contract.closeuse.replace(/\s+/g, '_')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(container).save();
+        }
+
+        // Company Profile Storage
+        function saveCompanyProfile(e) {
+            e.preventDefault();
+            const profile = {
+                name: document.getElementById('savedCompName').value,
+                trade: document.getElementById('savedCompTrade').value,
+                owner: document.getElementById('savedCompOwner').value,
+                role: document.getElementById('savedCompRole').value,
+                address: document.getElementById('savedCompAddress').value,
+                phone: document.getElementById('savedCompPhone').value,
+                email: document.getElementById('savedCompEmail').value
+            };
+            localStorage.setItem(STORAGE_KEY_COMPANY, JSON.stringify(profile));
+            alert("Profil d'entreprise ECOM ACADEMY PRO enregistré avec succès !");
+            loadCompanyProfile();
+        }
+
+        function loadCompanyProfile() {
+            const data = localStorage.getItem(STORAGE_KEY_COMPANY);
+            if(data) {
+                const p = JSON.parse(data);
+                document.getElementById('savedCompName').value = p.name || "ECOM ACADEMY PRO";
+                document.getElementById('savedCompTrade').value = p.trade || "Ecom Academy Pro";
+                document.getElementById('savedCompOwner').value = p.owner || "Junior GANGNIHESSOU";
+                document.getElementById('savedCompRole').value = p.role || "Fondateur / CEO";
+                document.getElementById('savedCompAddress').value = p.address || "Cotonou, République du Bénin";
+                document.getElementById('savedCompPhone').value = p.phone || "";
+                document.getElementById('savedCompEmail').value = p.email || "";
+
+                // Populate generator step 1
+                document.getElementById('compName').value = p.name || "ECOM ACADEMY PRO";
+                document.getElementById('compTradeName').value = p.trade || "Ecom Academy Pro";
+                document.getElementById('compOwner').value = p.owner || "Junior GANGNIHESSOU";
+                document.getElementById('compOwnerRole').value = p.role || "Fondateur / CEO";
+                document.getElementById('compAddress').value = p.address || "Cotonou, République du Bénin";
+                document.getElementById('compPhone').value = p.phone || "";
+                document.getElementById('compEmail').value = p.email || "";
+            }
+        }
+
+        function loadTemplate(type) {
+            startNewContract();
+            document.getElementById('commAmount').value = "2 000 FCFA";
+            updatePreview();
+        }
+
+        function exportDataJSON() {
+            const data = {
+                company: localStorage.getItem(STORAGE_KEY_COMPANY),
+                contracts: localStorage.getItem(STORAGE_KEY_CONTRACTS)
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ecom_academy_pro_backup_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+        }
+
+        function importDataJSON(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const parsed = JSON.parse(evt.target.result);
+                    if(parsed.company) localStorage.setItem(STORAGE_KEY_COMPANY, parsed.company);
+                    if(parsed.contracts) localStorage.setItem(STORAGE_KEY_CONTRACTS, parsed.contracts);
+                    alert("Données restaurées avec succès !");
+                    location.reload();
+                } catch(err) {
+                    alert("Fichier JSON invalide.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function toggleMobileView(mode) {
+            if(mode === 'form') {
+                document.getElementById('formSide').style.display = 'block';
+                document.getElementById('previewSide').style.display = 'none';
+            } else {
+                document.getElementById('formSide').style.display = 'none';
+                document.getElementById('previewSide').style.display = 'block';
+            }
+        }
+
+        // ==================== SIGNING FLOW (Destinataire) ====================
+
+        function initSigningCanvas() {
+            signingCanvas = document.getElementById('signingCanvas');
+            if (!signingCanvas) return;
+            signingCtx = signingCanvas.getContext('2d');
+            signingCanvas.width = 500;
+            signingCanvas.height = 150;
+
+            signingCanvas.addEventListener('mousedown', startSigningDraw);
+            signingCanvas.addEventListener('mousemove', drawSigning);
+            signingCanvas.addEventListener('mouseup', stopSigningDraw);
+            signingCanvas.addEventListener('mouseleave', stopSigningDraw);
+            signingCanvas.addEventListener('touchstart', (e) => { startSigningDraw(e.touches[0]); e.preventDefault(); });
+            signingCanvas.addEventListener('touchmove', (e) => { drawSigning(e.touches[0]); e.preventDefault(); });
+            signingCanvas.addEventListener('touchend', stopSigningDraw);
+        }
+
+        function startSigningDraw(e) {
+            isSigningDrawing = true;
+            const rect = signingCanvas.getBoundingClientRect();
+            signingCtx.beginPath();
+            signingCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function drawSigning(e) {
+            if (!isSigningDrawing) return;
+            const rect = signingCanvas.getBoundingClientRect();
+            signingCtx.lineWidth = 2;
+            signingCtx.lineCap = 'round';
+            signingCtx.strokeStyle = '#0f172a';
+            signingCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            signingCtx.stroke();
+        }
+
+        function stopSigningDraw() { isSigningDrawing = false; }
+
+        function clearSigningCanvas() {
+            if (signingCtx) signingCtx.clearRect(0, 0, signingCanvas.width, signingCanvas.height);
+        }
+
+        async function loadContractForSigning(token) {
+            // Masquer la sidebar et le header normal
+            document.querySelector('.sidebar').style.display = 'none';
+            document.querySelector('.top-navbar').style.display = 'none';
+            document.querySelector('.app-container').style.display = 'block';
+
+            // Afficher la vue signature
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('signingView').classList.add('active');
+            document.getElementById('pageTitle').innerText = 'Signature du contrat';
+
+            if (!supabaseClient) {
+                showSigningStatus("Erreur : connexion à la base de données impossible.", "error");
+                return;
+            }
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('contracts')
+                    .select('*')
+                    .eq('signing_token', token)
+                    .single();
+
+                if (error || !data) {
+                    showSigningStatus("Contrat introuvable ou lien invalide.", "error");
+                    document.getElementById('signingActionBox').style.display = 'none';
+                    return;
+                }
+
+                currentSigningContract = data;
+
+                // Afficher les infos
+                document.getElementById('signingContractInfo').innerHTML = `
+                    <strong>N° Contrat :</strong> ${data.number}<br>
+                    <strong>Entreprise :</strong> ${data.company_name}<br>
+                    <strong>Closeuse :</strong> ${data.closeuse_name}<br>
+                    <strong>Statut :</strong> <span class="badge ${data.status === 'Signé' ? 'badge-signed' : 'badge-pending'}">${data.status}</span>
+                `;
+
+                // Afficher le contenu du contrat
+                document.getElementById('signingContractPaper').innerHTML = data.html_content || '<p>Contenu du contrat non disponible.</p>';
+
+                if (data.status === 'Signé') {
+                    showSigningStatus("✅ Ce contrat a déjà été signé.", "success");
+                    document.getElementById('signingActionBox').style.display = 'none';
+                }
+
+            } catch (err) {
+                console.error(err);
+                showSigningStatus("Erreur lors du chargement du contrat.", "error");
+            }
+        }
+
+        function showSigningStatus(message, type) {
+            const el = document.getElementById('signingStatus');
+            el.style.display = 'block';
+            el.innerText = message;
+            if (type === 'success') {
+                el.style.background = '#d1fae5';
+                el.style.color = '#065f46';
+            } else if (type === 'error') {
+                el.style.background = '#fef2f2';
+                el.style.color = '#991b1b';
+            } else {
+                el.style.background = '#fef3c7';
+                el.style.color = '#92400e';
+            }
+        }
+
+        async function confirmRecipientSignature() {
+            if (!currentSigningContract) {
+                alert("Aucun contrat chargé.");
+                return;
+            }
+
+            // Vérifier qu'il y a une signature
+            const blank = document.createElement('canvas');
+            blank.width = signingCanvas.width;
+            blank.height = signingCanvas.height;
+            if (signingCanvas.toDataURL() === blank.toDataURL()) {
+                alert("Veuillez dessiner votre signature avant de valider.");
+                return;
+            }
+
+            const signatureData = signingCanvas.toDataURL();
+            const btn = document.getElementById('btnConfirmSign');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';
+
+            try {
+                // 1. Mettre à jour le contrat dans Supabase
+                const { error } = await supabaseClient
+                    .from('contracts')
+                    .update({
+                        status: 'Signé',
+                        closeuse_signature: signatureData
+                    })
+                    .eq('signing_token', currentSigningContract.signing_token);
+
+                if (error) throw error;
+
+                // 2. Mettre à jour l'aperçu localement avec la signature
+                const paper = document.getElementById('signingContractPaper');
+                const sigImg = paper.querySelector('#docSigCloseuseImg') || paper.querySelector('.signature-img:last-child');
+                if (sigImg) {
+                    sigImg.src = signatureData;
+                    sigImg.style.display = 'block';
+                }
+
+                // 3. Essayer d'envoyer l'email à l'expéditeur (via Resend)
+                await sendSignedContractEmail(currentSigningContract, signatureData);
+
+                showSigningStatus("✅ Contrat signé avec succès ! L'expéditeur a été notifié.", "success");
+                document.getElementById('signingActionBox').style.display = 'none';
+
+            } catch (err) {
+                console.error(err);
+                showSigningStatus("Erreur lors de la signature : " + err.message, "error");
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Signer et valider le contrat';
+            }
+        }
+
+        // Envoi d'email via Edge Function Supabase (fiable)
+        async function sendEmailViaFunction(to, subject, html) {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({ to, subject, html })
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    console.warn("Erreur Edge Function:", data);
+                    return false;
+                }
+                console.log("Email envoyé avec succès:", data);
+                return true;
+            } catch (err) {
+                console.warn("Erreur envoi email:", err.message);
+                return false;
+            }
+        }
+
+        async function sendSignedContractEmail(contract, signatureData) {
+            const html = `
+                <h2>✅ Contrat signé</h2>
+                <p>Bonjour,</p>
+                <p>Le contrat <strong>${contract.number}</strong> a été signé par <strong>${contract.closeuse_name}</strong>.</p>
+                <p>
+                    <strong>Entreprise :</strong> ${contract.company_name}<br>
+                    <strong>Destinataire :</strong> ${contract.closeuse_name}<br>
+                    <strong>Email destinataire :</strong> ${contract.recipient_email}
+                </p>
+                <p>Connectez-vous à votre tableau de bord pour télécharger le contrat signé.</p>
+                <br>
+                <p style="color:#64748b;font-size:12px;">ECOM ACADEMY PRO – Générateur de contrats</p>
+            `;
+            await sendEmailViaFunction(
+                contract.sender_email,
+                `✅ Contrat signé - ${contract.number}`,
+                html
+            );
+        }
+    </script>
+</body>
+</html>
