@@ -1217,6 +1217,7 @@
                                         <div class="form-group">
                                             <label>Fréquence de paiement</label>
                                             <select id="payFreq" onchange="updatePreview()">
+                                                <option value="Quotidienne">Chaque jour</option>
                                                 <option value="Hebdomadaire">Chaque semaine</option>
                                                 <option value="Bi-mensuelle">Toutes les deux semaines</option>
                                                 <option value="Mensuelle">Chaque mois</option>
@@ -1603,7 +1604,7 @@
                 art3Title: "ARTICLE 3 : MISSIONS DE LA CLOSEUSE",
                 missionsIntro: "La Closeuse s'engage à :",
                 art4Title: "ARTICLE 4 : RÉMUNÉRATION",
-                remunTemplate: "La Closeuse percevra une rémunération de <strong>{amount}</strong> par produit effectivement livré.",
+                remunTemplate: "La Closeuse percevra une rémunération de <strong>{amount}</strong> par produit effectivement livré. Le paiement s'effectue selon une fréquence <strong>{freq}</strong>.",
                 artLivreursTitle: "ARTICLE 5 : LIVREURS ET RESPONSABILITÉ",
                 livreursTemplate: "La Closeuse s'engage à trouver et à recruter des livreurs en qui elle a pleinement confiance pour assurer la livraison des produits. Elle est seule responsable du choix, de la gestion, du suivi et du comportement des livreurs qu'elle mandate. L'Entreprise ne pourra en aucun cas être tenue responsable des manquements, retards, pertes, détournements ou litiges liés aux livreurs. La commission versée au livreur est fixée à <strong>{livreurAmount}</strong> par produit livré, et est prise en charge par <strong>{paidBy}</strong>.{notes}",
                 art5Title: "ARTICLE 6 : CONDITIONS DE TRAVAIL",
@@ -1660,7 +1661,7 @@
                 art3Title: "ARTICLE 3: CLOSER’S MISSIONS",
                 missionsIntro: "The Closer undertakes to:",
                 art4Title: "ARTICLE 4: REMUNERATION",
-                remunTemplate: "The Closer shall receive remuneration of <strong>{amount}</strong> per product effectively delivered.",
+                remunTemplate: "The Closer shall receive remuneration of <strong>{amount}</strong> per product effectively delivered. Payment is made on a <strong>{freq}</strong> basis.",
                 artLivreursTitle: "ARTICLE 5: DELIVERY DRIVERS AND LIABILITY",
                 livreursTemplate: "The Closer undertakes to find and recruit delivery drivers in whom they have full trust to ensure product delivery. They are solely responsible for the selection, management, monitoring and conduct of the drivers they appoint. The Company shall in no event be held liable for any failures, delays, losses, misappropriations or disputes related to the drivers. The commission paid to the driver is set at <strong>{livreurAmount}</strong> per product delivered, and is borne by <strong>{paidBy}</strong>.{notes}",
                 art5Title: "ARTICLE 6: WORKING CONDITIONS",
@@ -2449,11 +2450,12 @@
             document.getElementById('pageTitle').innerText = titles[viewId] || 'ECOM ACADEMY PRO';
 
             if(viewId === 'contractsView' || viewId === 'dashboardView') {
-                // Synchronise d'abord depuis Supabase puis affiche
-                syncContractsFromSupabase().then(() => {
+                // Synchronise d'abord depuis Supabase puis affiche (toujours)
+                const refresh = () => {
                     if(viewId === 'contractsView') renderAllContracts();
                     if(viewId === 'dashboardView') renderDashboard();
-                });
+                };
+                syncContractsFromSupabase().then(refresh).catch(refresh);
             }
         }
 
@@ -2632,7 +2634,17 @@
 
             // Remuneration
             const commAmount = document.getElementById('commAmount').value || tr.amountPlaceholder;
-            document.getElementById('docRemunText').innerHTML = tr.remunTemplate.replace('{amount}', commAmount);
+            const payFreqEl = document.getElementById('payFreq');
+            const payFreq = payFreqEl ? payFreqEl.options[payFreqEl.selectedIndex].text : 'Chaque semaine';
+            let remunHtml = (tr.remunTemplate || '').replace('{amount}', commAmount).replace('{freq}', payFreq);
+            if (remunHtml.indexOf('{freq}') !== -1) {
+                remunHtml = remunHtml.replace('{freq}', payFreq);
+            }
+            // Si le template n'a pas {freq} (autres langues), on ajoute la phrase en français
+            if ((tr.remunTemplate || '').indexOf('{freq}') === -1) {
+                remunHtml = remunHtml + ' Le paiement s\'effectue selon une fréquence <strong>' + payFreq + '</strong>.';
+            }
+            document.getElementById('docRemunText').innerHTML = remunHtml;
 
             // Livreurs
             const livreurAmount = document.getElementById('livreurCommAmount') ? document.getElementById('livreurCommAmount').value : '1 000 FCFA';
@@ -2849,17 +2861,18 @@
                     );
 
                     if (idx !== -1) {
-                        // Met à jour le statut
-                        if (remote.status && remote.status !== localContracts[idx].status) {
+                        if (remote.status) {
                             localContracts[idx].status = remote.status;
                             updated = true;
                         }
-                        // Signature closeuse
                         if (remote.closeuse_signature) {
                             localContracts[idx].closeuseSignature = remote.closeuse_signature;
                             updated = true;
                         }
-                        // HTML signé (prioritaire)
+                        if (remote.company_signature) {
+                            localContracts[idx].companySignature = remote.company_signature;
+                            updated = true;
+                        }
                         if (remote.html_content && remote.html_content.trim()) {
                             localContracts[idx].htmlContent = remote.html_content;
                             updated = true;
@@ -3040,68 +3053,114 @@
             }
         }
 
-        // Helper robuste pour générer un PDF à partir d'un HTML de contrat
-        function generateContractPDF(htmlContent, filename, closeuseSignature) {
-            // Conteneur temporaire hors écran avec styles corrects
-            const wrapper = document.createElement('div');
-            wrapper.style.cssText = 'position:fixed; left:-9999px; top:0; width:794px; background:#fff; z-index:-1;';
-            
-            const container = document.createElement('div');
-            container.className = 'document-paper';
-            container.style.cssText = 'background:#fff; padding:40px; color:#111827; font-family:Times New Roman, serif; font-size:13px; line-height:1.6; width:100%; box-sizing:border-box;';
-            container.innerHTML = htmlContent || '';
-
-            // Injecte la signature de la closeuse si disponible
-            if (closeuseSignature) {
-                let sigImg = container.querySelector('#docSigCloseuseImg');
-                if (!sigImg) {
-                    const allSigs = container.querySelectorAll('.signature-img, img');
-                    if (allSigs.length > 0) sigImg = allSigs[allSigs.length - 1];
-                }
-                if (sigImg) {
-                    sigImg.src = closeuseSignature;
-                    sigImg.style.display = 'block';
-                    sigImg.style.maxHeight = '70px';
-                    sigImg.style.maxWidth = '220px';
-                }
+        // ========== GÉNÉRATION PDF FIABLE ==========
+        function generateContractPDF(htmlContent, filename, closeuseSignature, companySignature) {
+            if (!htmlContent || !htmlContent.trim()) {
+                alert('Le contenu du contrat est vide. Impossible de générer le PDF.');
+                return;
             }
 
-            // Affiche aussi la signature entreprise si présente dans le HTML
-            container.querySelectorAll('.signature-img').forEach(img => {
-                if (img.src && img.src !== '' && !img.src.endsWith('#')) {
-                    img.style.display = 'block';
-                    img.style.maxHeight = '70px';
+            // Conteneur propre, hors écran, style A4
+            const wrapper = document.createElement('div');
+            wrapper.id = 'pdf-export-wrapper';
+            wrapper.style.cssText = 'position:absolute; left:-10000px; top:0; width:210mm; background:#ffffff;';
+
+            const container = document.createElement('div');
+            container.style.cssText = [
+                'background:#ffffff',
+                'color:#111827',
+                'font-family: Times New Roman, Times, serif',
+                'font-size:12pt',
+                'line-height:1.5',
+                'padding:15mm',
+                'box-sizing:border-box',
+                'width:210mm'
+            ].join(';');
+
+            // Nettoie le HTML (enlève styles problématiques de l'aperçu)
+            let clean = htmlContent
+                .replace(/position\s*:\s*sticky/gi, 'position:static')
+                .replace(/max-height\s*:[^;"]+/gi, '')
+                .replace(/overflow\s*:[^;"]+/gi, '');
+
+            container.innerHTML = clean;
+
+            // Injecte les signatures (dernière validée uniquement)
+            const injectSig = (selector, dataUrl, fallbackLast) => {
+                if (!dataUrl) return;
+                let img = container.querySelector(selector);
+                if (!img && fallbackLast) {
+                    const all = container.querySelectorAll('.signature-img');
+                    if (all.length) img = all[all.length - 1];
                 }
+                if (img) {
+                    img.setAttribute('src', dataUrl);
+                    img.style.display = 'block';
+                    img.style.maxHeight = '60px';
+                    img.style.maxWidth = '200px';
+                    img.style.height = 'auto';
+                }
+            };
+            injectSig('#docSigCloseuseImg', closeuseSignature, true);
+            injectSig('#docSigCompImg', companySignature, false);
+
+            // Force affichage de toutes les signatures déjà en base64
+            container.querySelectorAll('img.signature-img, img[src^="data:"]').forEach(img => {
+                if (img.src && img.src.startsWith('data:')) {
+                    img.style.display = 'block';
+                    img.style.maxHeight = '60px';
+                    img.style.maxWidth = '200px';
+                }
+            });
+
+            // Tables propres pour le PDF
+            container.querySelectorAll('table').forEach(t => {
+                t.style.width = '100%';
+                t.style.borderCollapse = 'collapse';
+                t.style.pageBreakInside = 'avoid';
+            });
+            container.querySelectorAll('.doc-signatures').forEach(el => {
+                el.style.pageBreakInside = 'avoid';
+                el.style.breakInside = 'avoid';
+            });
+            container.querySelectorAll('.doc-section-title').forEach(el => {
+                el.style.pageBreakAfter = 'avoid';
             });
 
             wrapper.appendChild(container);
             document.body.appendChild(wrapper);
 
             const opt = {
-                margin:       [10, 10, 10, 10],
-                filename:     filename,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { 
-                    scale: 2, 
-                    useCORS: true, 
+                margin:       [8, 8, 8, 8],
+                filename:     filename || 'contrat.pdf',
+                image:        { type: 'jpeg', quality: 0.95 },
+                html2canvas:  {
+                    scale: 2,
+                    useCORS: true,
                     allowTaint: true,
                     backgroundColor: '#ffffff',
-                    logging: false
+                    logging: false,
+                    scrollX: 0,
+                    scrollY: 0,
+                    windowWidth: container.scrollWidth,
+                    windowHeight: container.scrollHeight
                 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+                pagebreak:    { mode: ['css', 'legacy'], avoid: ['.doc-signatures', 'tr', '.signature-box'] }
             };
 
-            // Petite pause pour laisser les images se charger
+            // Attendre le chargement des images data-URL
             setTimeout(() => {
-                html2pdf().set(opt).from(container).save().then(() => {
-                    document.body.removeChild(wrapper);
-                }).catch(err => {
-                    console.error('Erreur PDF:', err);
-                    document.body.removeChild(wrapper);
-                    alert('Erreur lors de la génération du PDF. Réessayez.');
-                });
-            }, 300);
+                html2pdf().set(opt).from(container).save()
+                    .then(() => {
+                        if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+                    })
+                    .catch(err => {
+                        console.error('Erreur PDF:', err);
+                        if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+                        alert('Erreur lors de la génération du PDF.');
+                    });
+            }, 400);
         }
 
         function downloadPDFById(id) {
@@ -3110,19 +3169,19 @@
                 alert('Contrat introuvable.');
                 return;
             }
-
             if (!contract.htmlContent || !contract.htmlContent.trim()) {
-                alert('Le contenu du contrat est vide. Impossible de générer le PDF.');
+                alert('Le contenu du contrat est vide.');
                 return;
             }
-
             const statusLabel = contract.status === 'Signé' ? '_signe' : '';
-            const filename = `${contract.number}_${(contract.closeuse || 'contrat').replace(/\s+/g, '_')}${statusLabel}.pdf`;
-            
+            const filename = (contract.number || 'contrat') + '_' +
+                (contract.closeuse || 'doc').replace(/\s+/g, '_') + statusLabel + '.pdf';
+
             generateContractPDF(
-                contract.htmlContent, 
-                filename, 
-                contract.closeuseSignature || null
+                contract.htmlContent,
+                filename,
+                contract.closeuseSignature || null,
+                contract.companySignature || null
             );
         }
 
@@ -3397,10 +3456,26 @@
                 // 4. Essayer d'envoyer l'email à l'expéditeur (via Resend)
                 await sendSignedContractEmail(currentSigningContract, signatureData);
 
+                // Mettre à jour le cache local (statut + signatures) pour le dashboard
+                try {
+                    let locals = getSavedContracts();
+                    const idx = locals.findIndex(c =>
+                        c.number === currentSigningContract.number ||
+                        c.signingToken === currentSigningContract.signing_token
+                    );
+                    if (idx !== -1) {
+                        locals[idx].status = 'Signé';
+                        locals[idx].closeuseSignature = signatureData;
+                        locals[idx].htmlContent = signedHtml;
+                        localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(locals));
+                    }
+                    currentSigningContract.status = 'Signé';
+                    currentSigningContract.closeuse_signature = signatureData;
+                    currentSigningContract.html_content = signedHtml;
+                } catch (e) { console.warn(e); }
+
                 showSigningStatus("✅ Contrat signé avec succès ! L'expéditeur a été notifié.", "success");
                 document.getElementById('signingActionBox').style.display = 'none';
-                
-                // Afficher le bouton de téléchargement PDF
                 document.getElementById('downloadSignedBox').style.display = 'block';
 
             } catch (err) {
@@ -3421,11 +3496,13 @@
 
             const contract = currentSigningContract;
             const filename = contract 
-                ? `${contract.number || 'contrat'}_${(contract.closeuse_name || 'signe').replace(/\s+/g, '_')}_signe.pdf`
+                ? ((contract.number || 'contrat') + '_' + (contract.closeuse_name || 'signe').replace(/\s+/g, '_') + '_signe.pdf')
                 : 'contrat_signe.pdf';
 
-            // Utilise le HTML actuel de la page (déjà avec la signature visible)
-            generateContractPDF(paper.innerHTML, filename, null);
+            // HTML de la page + signatures (dernière validée)
+            const closeuseSig = contract && contract.closeuse_signature ? contract.closeuse_signature : null;
+            const companySig = contract && contract.company_signature ? contract.company_signature : null;
+            generateContractPDF(paper.innerHTML, filename, closeuseSig, companySig);
         }
 
         // Envoi d'email via Edge Function Supabase (fiable)
