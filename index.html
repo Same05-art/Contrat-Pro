@@ -1481,6 +1481,17 @@
                                 </button>
                             </div>
                         </div>
+
+                        <!-- Bouton de téléchargement PDF après signature -->
+                        <div class="form-card" id="downloadSignedBox" style="display:none; text-align:center;">
+                            <h3 class="form-section-title" style="justify-content:center;"><i class="fa-solid fa-file-pdf"></i> Contrat signé</h3>
+                            <p style="font-size:14px; color:var(--text-muted); margin-bottom:20px;">
+                                Votre signature a été enregistrée. Vous pouvez maintenant télécharger le contrat signé.
+                            </p>
+                            <button class="btn btn-primary" onclick="downloadSignedContractPDF()" style="font-size:16px; padding:14px 28px;">
+                                <i class="fa-solid fa-download"></i> Télécharger le contrat signé (PDF)
+                            </button>
+                        </div>
                     </div>
                 </section>
 
@@ -2401,8 +2412,13 @@
             };
             document.getElementById('pageTitle').innerText = titles[viewId] || 'ECOM ACADEMY PRO';
 
-            if(viewId === 'contractsView') renderAllContracts();
-            if(viewId === 'dashboardView') renderDashboard();
+            if(viewId === 'contractsView' || viewId === 'dashboardView') {
+                // Synchronise d'abord depuis Supabase puis affiche
+                syncContractsFromSupabase().then(() => {
+                    if(viewId === 'contractsView') renderAllContracts();
+                    if(viewId === 'dashboardView') renderDashboard();
+                });
+            }
         }
 
         function startNewContract() {
@@ -2740,6 +2756,52 @@
             return JSON.parse(localStorage.getItem(STORAGE_KEY_CONTRACTS) || "[]");
         }
 
+        // Synchronise les contrats depuis Supabase (statut + signatures)
+        async function syncContractsFromSupabase() {
+            if (!supabaseClient) return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('contracts')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error || !data) return;
+
+                let localContracts = getSavedContracts();
+                let updated = false;
+
+                data.forEach(remote => {
+                    // Cherche le contrat local par numéro ou par signing_token
+                    const idx = localContracts.findIndex(c => 
+                        c.number === remote.number || 
+                        c.signingToken === remote.signing_token
+                    );
+
+                    if (idx !== -1) {
+                        // Met à jour le statut et la signature
+                        if (remote.status === 'Signé' && localContracts[idx].status !== 'Signé') {
+                            localContracts[idx].status = 'Signé';
+                            updated = true;
+                        }
+                        if (remote.closeuse_signature) {
+                            localContracts[idx].closeuseSignature = remote.closeuse_signature;
+                            updated = true;
+                        }
+                        if (remote.html_content) {
+                            localContracts[idx].htmlContent = remote.html_content;
+                        }
+                    }
+                });
+
+                if (updated) {
+                    localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(localContracts));
+                    console.log("✅ Contrats synchronisés depuis Supabase");
+                }
+            } catch (err) {
+                console.warn("Erreur sync Supabase:", err.message);
+            }
+        }
+
         async function generateAndSaveContract() {
             const senderEmail = document.getElementById('compEmail').value.trim();
             const recipientEmail = document.getElementById('closeuseEmail').value.trim();
@@ -2911,12 +2973,29 @@
             const container = document.createElement('div');
             container.className = "document-paper";
             container.innerHTML = contract.htmlContent;
+
+            // Si le contrat est signé, injecte la signature de la closeuse dans le PDF
+            if (contract.closeuseSignature) {
+                // Cherche l'image de signature de la closeuse
+                let sigImg = container.querySelector('#docSigCloseuseImg');
+                if (!sigImg) {
+                    // Fallback : dernière image de signature
+                    const allSigs = container.querySelectorAll('.signature-img');
+                    if (allSigs.length > 0) sigImg = allSigs[allSigs.length - 1];
+                }
+                if (sigImg) {
+                    sigImg.src = contract.closeuseSignature;
+                    sigImg.style.display = 'block';
+                    sigImg.style.maxHeight = '60px';
+                }
+            }
             
+            const statusLabel = contract.status === 'Signé' ? '_signe' : '';
             const opt = {
                 margin:       10,
-                filename:     `${contract.number}_${contract.closeuse.replace(/\s+/g, '_')}.pdf`,
+                filename:     `${contract.number}_${contract.closeuse.replace(/\s+/g, '_')}${statusLabel}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
+                html2canvas:  { scale: 2, useCORS: true },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
@@ -3141,30 +3220,38 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';
 
             try {
-                // 1. Mettre à jour le contrat dans Supabase
-                const { error } = await supabaseClient
-                    .from('contracts')
-                    .update({
-                        status: 'Signé',
-                        closeuse_signature: signatureData
-                    })
-                    .eq('signing_token', currentSigningContract.signing_token);
-
-                if (error) throw error;
-
-                // 2. Mettre à jour l'aperçu localement avec la signature
+                // 1. Mettre à jour l'aperçu localement avec la signature
                 const paper = document.getElementById('signingContractPaper');
                 const sigImg = paper.querySelector('#docSigCloseuseImg') || paper.querySelector('.signature-img:last-child');
                 if (sigImg) {
                     sigImg.src = signatureData;
                     sigImg.style.display = 'block';
+                    sigImg.style.maxHeight = '60px';
                 }
 
-                // 3. Essayer d'envoyer l'email à l'expéditeur (via Resend)
+                // 2. Récupère le HTML déjà mis à jour avec la signature
+                const signedHtml = paper ? paper.innerHTML : currentSigningContract.html_content;
+
+                // 3. Mettre à jour le contrat dans Supabase (statut + signature + HTML signé)
+                const { error } = await supabaseClient
+                    .from('contracts')
+                    .update({
+                        status: 'Signé',
+                        closeuse_signature: signatureData,
+                        html_content: signedHtml
+                    })
+                    .eq('signing_token', currentSigningContract.signing_token);
+
+                if (error) throw error;
+
+                // 4. Essayer d'envoyer l'email à l'expéditeur (via Resend)
                 await sendSignedContractEmail(currentSigningContract, signatureData);
 
                 showSigningStatus("✅ Contrat signé avec succès ! L'expéditeur a été notifié.", "success");
                 document.getElementById('signingActionBox').style.display = 'none';
+                
+                // Afficher le bouton de téléchargement PDF
+                document.getElementById('downloadSignedBox').style.display = 'block';
 
             } catch (err) {
                 console.error(err);
@@ -3172,6 +3259,30 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-check"></i> Signer et valider le contrat';
             }
+        }
+
+        // Télécharger le contrat signé en PDF (côté destinataire)
+        function downloadSignedContractPDF() {
+            const paper = document.getElementById('signingContractPaper');
+            if (!paper || !paper.innerHTML.trim()) {
+                alert("Impossible de trouver le contrat à télécharger.");
+                return;
+            }
+
+            const contract = currentSigningContract;
+            const filename = contract 
+                ? `${contract.number || 'contrat'}_${(contract.closeuse_name || 'signe').replace(/\s+/g, '_')}_signe.pdf`
+                : 'contrat_signe.pdf';
+
+            const opt = {
+                margin:       10,
+                filename:     filename,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(paper).save();
         }
 
         // Envoi d'email via Edge Function Supabase (fiable)
