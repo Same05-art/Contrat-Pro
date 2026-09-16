@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -720,6 +719,90 @@
             margin-bottom: 16px;
         }
 
+
+        /* Notifications */
+        .notif-wrap { position: relative; }
+        .notif-btn {
+            position: relative;
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: white;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            font-size: 16px;
+        }
+        .notif-btn:hover { background: #f1f5f9; }
+        .notif-badge {
+            position: absolute;
+            top: -2px; right: -2px;
+            min-width: 18px; height: 18px;
+            padding: 0 5px;
+            border-radius: 99px;
+            background: var(--danger);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .notif-badge.show { display: inline-flex; }
+        .notif-panel {
+            display: none;
+            position: absolute;
+            right: 0; top: 48px;
+            width: 360px;
+            max-width: calc(100vw - 24px);
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            z-index: 500;
+            overflow: hidden;
+        }
+        .notif-panel.open { display: block; }
+        .notif-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .notif-list {
+            max-height: 360px;
+            overflow-y: auto;
+        }
+        .notif-item {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .notif-item:hover { background: #f8fafc; }
+        .notif-item.unread { background: #eff6ff; }
+        .notif-item-title { font-weight: 600; margin-bottom: 4px; }
+        .notif-item-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        .notif-empty {
+            padding: 28px 16px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        .notif-actions {
+            display: flex;
+            gap: 8px;
+            padding: 10px 14px;
+            border-top: 1px solid var(--border);
+            background: #f8fafc;
+        }
+
         /* ========== RESPONSIVE ========== */
         @media (max-width: 1024px) {
             .generator-layout {
@@ -949,6 +1032,22 @@
             <header class="top-navbar">
                 <h1 class="top-navbar-title" id="pageTitle">Tableau de bord</h1>
                 <div class="top-actions">
+                    <div class="notif-wrap">
+                        <button type="button" class="notif-btn" onclick="toggleNotifPanel(event)" title="Notifications" aria-label="Notifications">
+                            <i class="fa-solid fa-bell"></i>
+                            <span class="notif-badge" id="notifBadge">0</span>
+                        </button>
+                        <div class="notif-panel" id="notifPanel">
+                            <div class="notif-panel-header">
+                                <span>Notifications</span>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="markAllNotificationsRead()">Tout lu</button>
+                            </div>
+                            <div class="notif-list" id="notifList"></div>
+                            <div class="notif-actions">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="clearAllNotifications()" style="flex:1;">Tout effacer</button>
+                            </div>
+                        </div>
+                    </div>
                     <button class="btn btn-primary" onclick="startNewContract()">
                         <i class="fa-solid fa-plus"></i> Nouveau Contrat
                     </button>
@@ -1469,11 +1568,37 @@
 
                 <!-- 6. SETTINGS & BACKUP VIEW -->
                 <section id="settingsView" class="view-section">
+                    <div class="form-card" style="max-width:600px; margin:0 auto 20px auto;">
+                        <h3 class="form-section-title"><i class="fa-solid fa-bell"></i> Notifications</h3>
+                        <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Gérez les alertes de l'application (génération, signature, emails).</p>
+                        <label class="checkbox-item" style="margin-bottom:10px;">
+                            <input type="checkbox" id="prefNotifInApp" checked onchange="saveNotifPrefsFromUI()"> Notifications dans l'application
+                        </label>
+                        <label class="checkbox-item" style="margin-bottom:10px;">
+                            <input type="checkbox" id="prefNotifPush" checked onchange="saveNotifPrefsFromUI()"> Notifications push (navigateur)
+                        </label>
+                        <label class="checkbox-item" style="margin-bottom:10px;">
+                            <input type="checkbox" id="prefNotifEmailGenerate" checked onchange="saveNotifPrefsFromUI()"> Email à la génération (lien de signature)
+                        </label>
+                        <label class="checkbox-item" style="margin-bottom:10px;">
+                            <input type="checkbox" id="prefNotifEmailSign" checked onchange="saveNotifPrefsFromUI()"> Email quand le contrat est signé
+                        </label>
+                        <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="enablePushNotifications()">
+                                <i class="fa-solid fa-bell"></i> Activer les notifications push
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="testPushNotification()">
+                                Tester une notification
+                            </button>
+                        </div>
+                        <p id="pushPermissionStatus" style="font-size:12px; color:var(--text-muted); margin-top:10px;"></p>
+                        <p style="font-size:12px; color:var(--text-muted); margin-top:8px;">Les emails passent par Resend via votre Edge Function Supabase. Les push s'affichent même si l'onglet est en arrière-plan (navigateur ouvert).</p>
+                    </div>
                     <div class="form-card" style="max-width:600px; margin:0 auto;">
                         <h3 class="form-section-title"><i class="fa-solid fa-database"></i> Sauvegarde & Exportation</h3>
                         <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Exporter ou restaurer vos données de contrats au format JSON.</p>
                         
-                        <div style="display:flex; gap:16px;">
+                        <div style="display:flex; gap:16px; flex-wrap:wrap;">
                             <button class="btn btn-secondary" onclick="exportDataJSON()"><i class="fa-solid fa-download"></i> Exporter mes données</button>
                             <button class="btn btn-secondary" onclick="document.getElementById('importJsonInput').click()"><i class="fa-solid fa-upload"></i> Importer mes données</button>
                             <input type="file" id="importJsonInput" accept=".json" style="display:none;" onchange="importDataJSON(event)">
@@ -1515,7 +1640,7 @@
                         <div class="form-card" id="downloadSignedBox" style="display:none; text-align:center;">
                             <h3 class="form-section-title" style="justify-content:center;"><i class="fa-solid fa-file-pdf"></i> Contrat signé</h3>
                             <p style="font-size:14px; color:var(--text-muted); margin-bottom:20px;">
-                                Votre signature a été enregistrée. Vous pouvez maintenant télécharger le contrat signé.
+                                Votre signature a été enregistrée. Relisez le contrat ci-dessus (aperçu navigateur), puis téléchargez le PDF.
                             </p>
                             <button class="btn btn-primary" onclick="downloadSignedContractPDF()" style="font-size:16px; padding:14px 28px;">
                                 <i class="fa-solid fa-download"></i> Télécharger le contrat signé (PDF)
@@ -1526,6 +1651,32 @@
 
             </div>
         </main>
+    </div>
+
+    <!-- SUCCESS MODAL (lien cliquable après génération) -->
+    <div class="modal-overlay" id="successModal">
+        <div class="modal-card" style="max-width:560px;">
+            <h3 style="margin-bottom:12px;"><i class="fa-solid fa-circle-check" style="color:var(--success);"></i> Contrat généré</h3>
+            <div id="successModalBody" style="font-size:14px; line-height:1.6; color:var(--text-main);"></div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px; flex-wrap:wrap;">
+                <button class="btn btn-secondary" onclick="closeSuccessModal()">Fermer</button>
+                <button class="btn btn-primary" id="successModalCopyBtn" onclick="copySigningLink()"><i class="fa-solid fa-copy"></i> Copier le lien</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PREVIEW MODAL (contrat signé dans le navigateur) -->
+    <div class="modal-overlay" id="previewContractModal">
+        <div class="modal-card" style="max-width:900px; max-height:90vh; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+            <div style="padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                <h3 style="margin:0; font-size:16px;" id="previewContractTitle">Aperçu du contrat</h3>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" id="previewDownloadBtn" onclick="downloadFromPreview()"><i class="fa-solid fa-download"></i> PDF</button>
+                    <button class="btn btn-secondary btn-sm" onclick="closePreviewContract()">Fermer</button>
+                </div>
+            </div>
+            <div id="previewContractBody" style="overflow:auto; padding:20px; background:#525659; flex:1;"></div>
+        </div>
     </div>
 
     <!-- SIGNATURE MODAL -->
@@ -1557,6 +1708,129 @@
         // LocalStorage Keys
         const STORAGE_KEY_CONTRACTS = "ecom_academy_pro_contracts";
         const STORAGE_KEY_COMPANY = "ecom_academy_pro_company";
+
+        // ==================== NOTIFICATIONS ====================
+        const STORAGE_KEY_NOTIFS = "ecom_academy_pro_notifications";
+        const STORAGE_KEY_NOTIF_PREF = "ecom_academy_pro_notif_prefs";
+
+        function getNotifPrefs() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY_NOTIF_PREF) || '{"emailOnSign":true,"emailOnGenerate":true,"inApp":true,"push":true}');
+            } catch(e) {
+                return { emailOnSign: true, emailOnGenerate: true, inApp: true };
+            }
+        }
+
+        function saveNotifPrefs(prefs) {
+            localStorage.setItem(STORAGE_KEY_NOTIF_PREF, JSON.stringify(prefs));
+        }
+
+        function getNotifications() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY_NOTIFS) || "[]");
+            } catch(e) { return []; }
+        }
+
+        function saveNotifications(list) {
+            localStorage.setItem(STORAGE_KEY_NOTIFS, JSON.stringify(list.slice(0, 100)));
+            renderNotificationUI();
+        }
+
+        function addNotification(title, message, type, meta) {
+            const prefs = getNotifPrefs();
+            meta = meta || {};
+            if (prefs.inApp !== false) {
+                const list = getNotifications();
+                list.unshift({
+                    id: Date.now() + Math.random().toString(36).slice(2, 7),
+                    title: title,
+                    message: message,
+                    type: type || "info",
+                    meta: meta,
+                    read: false,
+                    createdAt: new Date().toISOString()
+                });
+                saveNotifications(list);
+            }
+            // Notification système / push
+            showBrowserNotification(title, message, {
+                tag: (meta.number || type || 'ecom') + '-' + Date.now(),
+                payload: meta,
+                requireInteraction: type === 'success'
+            });
+        }
+
+        function unreadCount() {
+            return getNotifications().filter(function(n) { return !n.read; }).length;
+        }
+
+        function renderNotificationUI() {
+            const badge = document.getElementById("notifBadge");
+            const listEl = document.getElementById("notifList");
+            if (!badge || !listEl) return;
+            const n = unreadCount();
+            if (n > 0) {
+                badge.textContent = n > 99 ? "99+" : String(n);
+                badge.classList.add("show");
+            } else {
+                badge.classList.remove("show");
+            }
+            const items = getNotifications();
+            if (!items.length) {
+                listEl.innerHTML = '<div class="notif-empty"><i class="fa-regular fa-bell" style="font-size:24px;margin-bottom:8px;display:block;"></i>Aucune notification</div>';
+                return;
+            }
+            listEl.innerHTML = items.map(function(item) {
+                const time = new Date(item.createdAt).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+                const icon = item.type === "success" ? "fa-circle-check" : (item.type === "warning" ? "fa-triangle-exclamation" : "fa-circle-info");
+                const color = item.type === "success" ? "var(--success)" : (item.type === "warning" ? "var(--warning)" : "var(--accent)");
+                return '<div class="notif-item ' + (item.read ? "" : "unread") + '" onclick="openNotification(\'' + item.id + '\')">' +
+                    '<div class="notif-item-title"><i class="fa-solid ' + icon + '" style="color:' + color + ';margin-right:6px;"></i>' + item.title + '</div>' +
+                    '<div>' + item.message + '</div>' +
+                    '<div class="notif-item-time">' + time + '</div></div>';
+            }).join("");
+        }
+
+        function toggleNotifPanel(e) {
+            if (e) e.stopPropagation();
+            const panel = document.getElementById("notifPanel");
+            if (!panel) return;
+            panel.classList.toggle("open");
+            renderNotificationUI();
+        }
+
+        function openNotification(id) {
+            const list = getNotifications();
+            const item = list.find(function(n) { return n.id === id; });
+            if (!item) return;
+            item.read = true;
+            saveNotifications(list);
+            if (item.meta && item.meta.contractId) {
+                viewContractById(item.meta.contractId);
+            }
+            document.getElementById("notifPanel").classList.remove("open");
+        }
+
+        function markAllNotificationsRead() {
+            const list = getNotifications().map(function(n) { n.read = true; return n; });
+            saveNotifications(list);
+        }
+
+        function clearAllNotifications() {
+            if (!confirm("Effacer toutes les notifications ?")) return;
+            saveNotifications([]);
+            document.getElementById("notifPanel").classList.remove("open");
+        }
+
+        // Fermer le panneau si clic extérieur
+        document.addEventListener("click", function(e) {
+            const wrap = document.querySelector(".notif-wrap");
+            const panel = document.getElementById("notifPanel");
+            if (!wrap || !panel) return;
+            if (!wrap.contains(e.target)) panel.classList.remove("open");
+        });
+
+
 
         // ==================== SUPABASE + RESEND CONFIG ====================
         const SUPABASE_URL = "https://acuwzcpxbbtivjilhckj.supabase.co";
@@ -2426,8 +2700,127 @@
                 renderDashboard();
                 initSignatureCanvas();
                 updatePreview();
+                loadNotifPrefsToUI();
+                renderNotificationUI();
+                registerServiceWorker().then(updatePushPermissionLabel);
             }
         });
+
+        function loadNotifPrefsToUI() {
+            const p = getNotifPrefs();
+            const a = document.getElementById('prefNotifInApp');
+            const b = document.getElementById('prefNotifEmailGenerate');
+            const c = document.getElementById('prefNotifEmailSign');
+            const d = document.getElementById('prefNotifPush');
+            if (a) a.checked = p.inApp !== false;
+            if (b) b.checked = p.emailOnGenerate !== false;
+            if (c) c.checked = p.emailOnSign !== false;
+            if (d) d.checked = p.push !== false;
+            updatePushPermissionLabel();
+        }
+
+        function saveNotifPrefsFromUI() {
+            saveNotifPrefs({
+                inApp: document.getElementById('prefNotifInApp') ? document.getElementById('prefNotifInApp').checked : true,
+                push: document.getElementById('prefNotifPush') ? document.getElementById('prefNotifPush').checked : true,
+                emailOnGenerate: document.getElementById('prefNotifEmailGenerate') ? document.getElementById('prefNotifEmailGenerate').checked : true,
+                emailOnSign: document.getElementById('prefNotifEmailSign') ? document.getElementById('prefNotifEmailSign').checked : true
+            });
+        }
+
+        function updatePushPermissionLabel() {
+            const el = document.getElementById('pushPermissionStatus');
+            if (!el) return;
+            if (!('Notification' in window)) {
+                el.textContent = 'Ce navigateur ne supporte pas les notifications.';
+                return;
+            }
+            const map = {
+                granted: '✅ Permission accordée — les notifications push sont actives.',
+                denied: '❌ Permission refusée. Autorisez les notifications dans les réglages du navigateur.',
+                default: '⏳ Permission non demandée. Cliquez sur « Activer les notifications push ».'
+            };
+            el.textContent = map[Notification.permission] || map.default;
+        }
+
+        async function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) return null;
+            try {
+                const reg = await navigator.serviceWorker.register('/sw.js');
+                await navigator.serviceWorker.ready;
+                return reg;
+            } catch (err) {
+                console.warn('SW register failed:', err);
+                return null;
+            }
+        }
+
+        async function enablePushNotifications() {
+            if (!('Notification' in window)) {
+                alert('Notifications non supportées sur ce navigateur.');
+                return;
+            }
+            const perm = await Notification.requestPermission();
+            updatePushPermissionLabel();
+            if (perm !== 'granted') {
+                alert('Permission refusée. Vous pouvez la réactiver dans les paramètres du navigateur.');
+                return;
+            }
+            await registerServiceWorker();
+            const prefs = getNotifPrefs();
+            prefs.push = true;
+            saveNotifPrefs(prefs);
+            loadNotifPrefsToUI();
+            showBrowserNotification('Notifications activées', 'Vous recevrez les alertes de contrats (génération, signature).', { tag: 'push-enabled' });
+        }
+
+        async function testPushNotification() {
+            await showBrowserNotification(
+                'Test ECOM ACADEMY PRO',
+                'Les notifications push fonctionnent correctement.',
+                { tag: 'test-push' }
+            );
+        }
+
+        async function showBrowserNotification(title, body, options) {
+            options = options || {};
+            const prefs = getNotifPrefs();
+            if (prefs.push === false) return;
+            if (!('Notification' in window)) return;
+            if (Notification.permission !== 'granted') return;
+
+            const payload = options.payload || {};
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                if (reg && reg.active) {
+                    reg.active.postMessage({
+                        type: 'SHOW_NOTIFICATION',
+                        title: title,
+                        body: body,
+                        tag: options.tag || 'ecom-notif',
+                        requireInteraction: !!options.requireInteraction,
+                        payload: payload
+                    });
+                    return;
+                }
+            } catch (e) {}
+
+            // Fallback sans service worker
+            try {
+                const n = new Notification(title, {
+                    body: body,
+                    tag: options.tag || 'ecom-notif',
+                    data: payload
+                });
+                n.onclick = function() {
+                    window.focus();
+                    n.close();
+                };
+            } catch (err) {
+                console.warn('Notification error:', err);
+            }
+        }
+
 
         // Navigation Router
         function switchView(viewId) {
@@ -2883,6 +3276,26 @@
                 if (updated) {
                     localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(localContracts));
                     console.log("✅ Contrats synchronisés depuis Supabase");
+                    // Notifications pour nouveaux contrats signés détectés
+                    data.forEach(function(remote) {
+                        if (remote.status === "Signé") {
+                            var local = localContracts.find(function(c) {
+                                return c.number === remote.number || c.signingToken === remote.signing_token;
+                            });
+                            if (local && local.status === "Signé") {
+                                var key = "notified_signed_" + remote.number;
+                                if (!sessionStorage.getItem(key)) {
+                                    sessionStorage.setItem(key, "1");
+                                    addNotification(
+                                        "Contrat signé",
+                                        remote.number + " — " + (remote.closeuse_name || ""),
+                                        "success",
+                                        { contractId: local.id, number: remote.number }
+                                    );
+                                }
+                            }
+                        }
+                    });
                 }
             } catch (err) {
                 console.warn("Erreur sync Supabase:", err.message);
@@ -2911,12 +3324,12 @@
                 closeuse: `${document.getElementById('closeuseFirstName').value} ${document.getElementById('closeuseLastName').value}`,
                 senderEmail: senderEmail,
                 recipientEmail: recipientEmail,
-                status: (compSignatureData && closeuseSignatureData) ? "Signé" : "En attente",
+                status: "En attente", // Devient "Signé" uniquement après validation par la closeuse
                 language: currentLang,
                 signingToken: signingToken,
                 htmlContent: document.getElementById('contractPaper').innerHTML,
                 companySignature: compSignatureData || null,
-                closeuseSignature: closeuseSignatureData || null,
+                closeuseSignature: null, // Uniquement après validation via le lien
                 createdAt: new Date().toISOString()
             };
 
@@ -2941,7 +3354,7 @@
                             signing_token: signingToken,
                             html_content: newContract.htmlContent,
                             company_signature: compSignatureData || null,
-                            closeuse_signature: closeuseSignatureData || null
+                            closeuse_signature: null
                         }])
                         .select();
 
@@ -2953,18 +3366,11 @@
                 }
             }
 
-            // 3. Message à l'utilisateur + tentative d'envoi du lien
+            // 3. Envoi email + modal avec lien cliquable
             const signingLink = `${APP_BASE_URL}?sign=${signingToken}`;
-            
-            let message = `Contrat ${contractNum} généré avec succès !\n\n`;
-            message += `📧 Expéditeur : ${senderEmail}\n`;
-            message += `📧 Destinataire : ${recipientEmail}\n\n`;
-            
-            if (onlineSuccess) {
-                message += `✅ Contrat enregistré en ligne.\n`;
-                message += `🔗 Lien de signature :\n${signingLink}\n\n`;
+            let emailSent = false;
 
-                // Envoi automatique du lien via Edge Function
+            if (onlineSuccess && getNotifPrefs().emailOnGenerate !== false) {
                 const emailHtml = `
                     <h2>Demande de signature de contrat</h2>
                     <p>Bonjour ${newContract.closeuse},</p>
@@ -2977,26 +3383,109 @@
                     </p>
                     <p style="color:#64748b;font-size:13px;">Ou copiez ce lien :<br>${signingLink}</p>
                 `;
-
-                const emailSent = await sendEmailViaFunction(
+                emailSent = await sendEmailViaFunction(
                     recipientEmail,
                     `Signature requise - Contrat ${contractNum}`,
                     emailHtml
                 );
-
-                if (emailSent) {
-                    message += `📧 Email de signature envoyé automatiquement à ${recipientEmail}`;
-                } else {
-                    message += `⚠️ L'email n'a pas pu être envoyé automatiquement.\nEnvoyez ce lien manuellement au destinataire.`;
-                }
-            } else {
-                message += `💾 Contrat enregistré localement.\n\n`;
-                message += `⚠️ Vérifiez la connexion Supabase.`;
             }
 
-            alert(message);
+            showSuccessModal({
+                contractNum: contractNum,
+                senderEmail: senderEmail,
+                recipientEmail: recipientEmail,
+                signingLink: signingLink,
+                onlineSuccess: onlineSuccess,
+                emailSent: emailSent
+            });
+            addNotification(
+                "Contrat généré",
+                contractNum + " — en attente de signature (" + newContract.closeuse + ")",
+                "info",
+                { contractId: newContract.id, number: contractNum }
+            );
             switchView('contractsView');
         }
+
+        let lastSigningLink = '';
+        let previewContractData = null;
+
+        function showSuccessModal(opts) {
+            lastSigningLink = opts.signingLink || '';
+            let html = '<p style="margin-bottom:12px;"><strong>Contrat ' + opts.contractNum + '</strong> généré avec succès.</p>';
+            html += '<p style="margin-bottom:8px;">📧 Expéditeur : ' + opts.senderEmail + '<br>📧 Destinataire : ' + opts.recipientEmail + '</p>';
+            if (opts.onlineSuccess) {
+                html += '<p style="color:var(--success); margin-bottom:12px;">✅ Contrat enregistré en ligne.</p>';
+                html += '<p style="margin-bottom:6px; font-weight:600;">🔗 Lien de signature (cliquable) :</p>';
+                html += '<p style="margin-bottom:12px; word-break:break-all;"><a href="' + opts.signingLink + '" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">' + opts.signingLink + '</a></p>';
+                if (opts.emailSent) {
+                    html += '<p style="color:var(--success);">📧 Email envoyé automatiquement à ' + opts.recipientEmail + '</p>';
+                } else {
+                    html += '<p style="color:#b45309;">⚠️ Email non envoyé automatiquement — copiez le lien et envoyez-le manuellement.</p>';
+                }
+            } else {
+                html += '<p style="color:#b45309;">💾 Enregistré localement. Vérifiez la connexion Supabase.</p>';
+                if (opts.signingLink) {
+                    html += '<p style="margin-top:12px; word-break:break-all;"><a href="' + opts.signingLink + '" target="_blank" rel="noopener" style="color:var(--accent);">' + opts.signingLink + '</a></p>';
+                }
+            }
+            document.getElementById('successModalBody').innerHTML = html;
+            document.getElementById('successModal').classList.add('active');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.remove('active');
+        }
+
+        function copySigningLink() {
+            if (!lastSigningLink) return;
+            navigator.clipboard.writeText(lastSigningLink).then(function() {
+                const btn = document.getElementById('successModalCopyBtn');
+                if (btn) {
+                    const t = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Copié !';
+                    setTimeout(function() { btn.innerHTML = t; }, 2000);
+                }
+            }).catch(function() {
+                prompt('Copiez ce lien :', lastSigningLink);
+            });
+        }
+
+        function viewContractById(id) {
+            const contract = getSavedContracts().find(function(c) { return c.id === id; });
+            if (!contract || !contract.htmlContent) {
+                alert('Contrat introuvable ou contenu vide.');
+                return;
+            }
+            previewContractData = contract;
+            document.getElementById('previewContractTitle').innerText =
+                (contract.number || 'Contrat') + (contract.status === 'Signé' ? ' — Version signée' : ' — Aperçu');
+            const body = document.getElementById('previewContractBody');
+            body.innerHTML = '<div class="document-paper" style="max-width:700px;margin:0 auto;">' + contract.htmlContent + '</div>';
+            if (contract.closeuseSignature) {
+                const img = body.querySelector('#docSigCloseuseImg');
+                if (img) { img.src = contract.closeuseSignature; img.style.display = 'block'; }
+            }
+            if (contract.companySignature) {
+                const img = body.querySelector('#docSigCompImg');
+                if (img) { img.src = contract.companySignature; img.style.display = 'block'; }
+            }
+            document.getElementById('previewContractModal').classList.add('active');
+        }
+
+        function closePreviewContract() {
+            document.getElementById('previewContractModal').classList.remove('active');
+            previewContractData = null;
+        }
+
+        function downloadFromPreview() {
+            if (!previewContractData) return;
+            const c = previewContractData;
+            const statusLabel = c.status === 'Signé' ? '_signe' : '';
+            const filename = (c.number || 'contrat') + '_' + (c.closeuse || 'doc').replace(/\s+/g, '_') + statusLabel + '.pdf';
+            generateContractPDF(c.htmlContent, filename, c.closeuseSignature || null, c.companySignature || null);
+        }
+
 
         function renderDashboard() {
             const contracts = getSavedContracts();
@@ -3017,6 +3506,7 @@
                     <td>${c.date}</td>
                     <td><span class="badge ${c.status === 'Signé' ? 'badge-signed' : 'badge-pending'}">${c.status}</span></td>
                     <td>
+                        <button class="btn btn-secondary btn-sm" onclick="viewContractById(${c.id})" title="Aperçu"><i class="fa-solid fa-eye"></i></button>
                         <button class="btn btn-secondary btn-sm" onclick="downloadPDFById(${c.id})"><i class="fa-solid fa-download"></i> PDF</button>
                     </td>
                 `;
@@ -3036,6 +3526,7 @@
                     <td>${c.date}</td>
                     <td><span class="badge ${c.status === 'Signé' ? 'badge-signed' : 'badge-pending'}">${c.status}</span></td>
                     <td>
+                        <button class="btn btn-secondary btn-sm" onclick="viewContractById(${c.id})" title="Aperçu"><i class="fa-solid fa-eye"></i></button>
                         <button class="btn btn-secondary btn-sm" onclick="downloadPDFById(${c.id})"><i class="fa-solid fa-download"></i> PDF</button>
                         <button class="btn btn-danger btn-sm" onclick="deleteContract(${c.id})"><i class="fa-solid fa-trash"></i></button>
                     </td>
@@ -3055,86 +3546,203 @@
 
         // ========== GÉNÉRATION PDF FIABLE ==========
         function generateContractPDF(htmlContent, filename, closeuseSignature, companySignature) {
-            if (!htmlContent || !htmlContent.trim()) {
+            if (!htmlContent || !String(htmlContent).trim()) {
                 alert('Le contenu du contrat est vide. Impossible de générer le PDF.');
                 return;
             }
 
-            // Conteneur propre, hors écran, style A4
+            // Styles PDF stables (Times uniquement, pas de Grid, largeur A4)
+            const styleBlock = `
+<style>
+  .pdf-root, .pdf-root * {
+    box-sizing: border-box;
+    font-family: "Times New Roman", Times, serif !important;
+  }
+  .pdf-root {
+    width: 794px;
+    max-width: 794px;
+    padding: 40px 48px;
+    margin: 0;
+    background: #ffffff;
+    color: #111827;
+    font-size: 13px;
+    line-height: 1.55;
+    text-align: left;
+  }
+  .pdf-root .doc-header-top {
+    text-align: center;
+    border-bottom: 2px solid #111827;
+    padding-bottom: 12px;
+    margin: 0 0 16px 0;
+  }
+  .pdf-root .doc-main-title {
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin: 0;
+  }
+  .pdf-root .doc-app-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #2563eb;
+    margin-top: 4px;
+  }
+  .pdf-root .doc-sub-header {
+    text-align: center;
+    font-weight: bold;
+    font-size: 13px;
+    text-transform: uppercase;
+    margin: 0 0 14px 0;
+  }
+  .pdf-root p {
+    margin: 0 0 8px 0;
+  }
+  .pdf-root .doc-section-title {
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 14px 0 6px 0;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #e5e7eb;
+    page-break-after: avoid;
+  }
+  .pdf-root .doc-table-info {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 12px 0;
+    table-layout: fixed;
+  }
+  .pdf-root .doc-table-info th,
+  .pdf-root .doc-table-info td {
+    border: 1px solid #cbd5e1;
+    padding: 6px 8px;
+    font-size: 12px;
+    text-align: left;
+    vertical-align: top;
+    word-wrap: break-word;
+  }
+  .pdf-root .doc-table-info th {
+    background: #f1f5f9;
+    font-weight: bold;
+  }
+  .pdf-root ul {
+    margin: 0 0 8px 0;
+    padding-left: 20px;
+  }
+  .pdf-root li {
+    margin-bottom: 3px;
+  }
+  /* Signatures en TABLE (pas de CSS Grid = pas de décalage html2canvas) */
+  .pdf-root .doc-signatures {
+    display: block !important;
+    width: 100%;
+    margin-top: 28px;
+    page-break-inside: avoid;
+  }
+  .pdf-root .pdf-sig-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 12px 0;
+    table-layout: fixed;
+  }
+  .pdf-root .pdf-sig-table td {
+    width: 50%;
+    vertical-align: top;
+    border: 1px dashed #cbd5e1;
+    padding: 10px;
+    background: #fafafa;
+  }
+  .pdf-root .signature-box {
+    border: none !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    background: transparent !important;
+  }
+  .pdf-root .signature-img {
+    display: block;
+    max-height: 55px;
+    max-width: 180px;
+    margin-top: 6px;
+    height: auto;
+  }
+  .pdf-root img {
+    max-width: 100%;
+  }
+</style>`;
+
             const wrapper = document.createElement('div');
-            wrapper.id = 'pdf-export-wrapper';
-            wrapper.style.cssText = 'position:absolute; left:-10000px; top:0; width:210mm; background:#ffffff;';
+            wrapper.setAttribute('id', 'pdf-export-wrapper');
+            wrapper.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:#fff;z-index:-1;overflow:visible;';
 
-            const container = document.createElement('div');
-            container.style.cssText = [
-                'background:#ffffff',
-                'color:#111827',
-                'font-family: Times New Roman, Times, serif',
-                'font-size:12pt',
-                'line-height:1.5',
-                'padding:15mm',
-                'box-sizing:border-box',
-                'width:210mm'
-            ].join(';');
+            const root = document.createElement('div');
+            root.className = 'pdf-root';
+            root.innerHTML = styleBlock + htmlContent;
 
-            // Nettoie le HTML (enlève styles problématiques de l'aperçu)
-            let clean = htmlContent
-                .replace(/position\s*:\s*sticky/gi, 'position:static')
-                .replace(/max-height\s*:[^;"]+/gi, '')
-                .replace(/overflow\s*:[^;"]+/gi, '');
+            // Convertir .doc-signatures (grid) en tableau HTML stable
+            const sigBlock = root.querySelector('.doc-signatures');
+            if (sigBlock) {
+                const boxes = sigBlock.querySelectorAll('.signature-box');
+                if (boxes.length >= 2) {
+                    const table = document.createElement('table');
+                    table.className = 'pdf-sig-table';
+                    const tr = document.createElement('tr');
+                    const td1 = document.createElement('td');
+                    const td2 = document.createElement('td');
+                    td1.innerHTML = boxes[0].innerHTML;
+                    td2.innerHTML = boxes[1].innerHTML;
+                    tr.appendChild(td1);
+                    tr.appendChild(td2);
+                    table.appendChild(tr);
+                    sigBlock.innerHTML = '';
+                    sigBlock.appendChild(table);
+                }
+            }
 
-            container.innerHTML = clean;
-
-            // Injecte les signatures (dernière validée uniquement)
-            const injectSig = (selector, dataUrl, fallbackLast) => {
+            // Injecter les signatures (dernière validée uniquement)
+            const putSig = (selector, dataUrl) => {
                 if (!dataUrl) return;
-                let img = container.querySelector(selector);
-                if (!img && fallbackLast) {
-                    const all = container.querySelectorAll('.signature-img');
-                    if (all.length) img = all[all.length - 1];
+                let img = root.querySelector(selector);
+                if (!img && selector.indexOf('Closeuse') !== -1) {
+                    const imgs = root.querySelectorAll('.signature-img');
+                    if (imgs.length) img = imgs[imgs.length - 1];
+                }
+                if (!img && selector.indexOf('Comp') !== -1) {
+                    const imgs = root.querySelectorAll('.signature-img');
+                    if (imgs.length) img = imgs[0];
                 }
                 if (img) {
                     img.setAttribute('src', dataUrl);
                     img.style.display = 'block';
-                    img.style.maxHeight = '60px';
-                    img.style.maxWidth = '200px';
-                    img.style.height = 'auto';
+                    img.style.maxHeight = '55px';
+                    img.style.maxWidth = '180px';
                 }
             };
-            injectSig('#docSigCloseuseImg', closeuseSignature, true);
-            injectSig('#docSigCompImg', companySignature, false);
+            putSig('#docSigCompImg', companySignature);
+            putSig('#docSigCloseuseImg', closeuseSignature);
 
-            // Force affichage de toutes les signatures déjà en base64
-            container.querySelectorAll('img.signature-img, img[src^="data:"]').forEach(img => {
-                if (img.src && img.src.startsWith('data:')) {
-                    img.style.display = 'block';
-                    img.style.maxHeight = '60px';
-                    img.style.maxWidth = '200px';
-                }
+            root.querySelectorAll('img[src^="data:"]').forEach(function(img) {
+                img.style.display = 'block';
+                img.style.maxHeight = '55px';
+                img.style.maxWidth = '180px';
             });
 
-            // Tables propres pour le PDF
-            container.querySelectorAll('table').forEach(t => {
-                t.style.width = '100%';
-                t.style.borderCollapse = 'collapse';
-                t.style.pageBreakInside = 'avoid';
-            });
-            container.querySelectorAll('.doc-signatures').forEach(el => {
-                el.style.pageBreakInside = 'avoid';
-                el.style.breakInside = 'avoid';
-            });
-            container.querySelectorAll('.doc-section-title').forEach(el => {
-                el.style.pageBreakAfter = 'avoid';
+            // Nettoyage styles inline problématiques
+            root.querySelectorAll('[style]').forEach(function(el) {
+                var s = el.getAttribute('style') || '';
+                s = s.replace(/position\s*:\s*sticky/gi, 'position:static');
+                s = s.replace(/max-height\s*:[^;]+;?/gi, '');
+                s = s.replace(/overflow\s*:[^;]+;?/gi, '');
+                el.setAttribute('style', s);
             });
 
-            wrapper.appendChild(container);
+            wrapper.appendChild(root);
             document.body.appendChild(wrapper);
 
-            const opt = {
-                margin:       [8, 8, 8, 8],
-                filename:     filename || 'contrat.pdf',
-                image:        { type: 'jpeg', quality: 0.95 },
-                html2canvas:  {
+            var opt = {
+                margin: [12, 12, 12, 12],
+                filename: filename || 'contrat.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
                     scale: 2,
                     useCORS: true,
                     allowTaint: true,
@@ -3142,28 +3750,39 @@
                     logging: false,
                     scrollX: 0,
                     scrollY: 0,
-                    windowWidth: container.scrollWidth,
-                    windowHeight: container.scrollHeight
+                    windowWidth: 794
                 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['css', 'legacy'], avoid: ['.doc-signatures', 'tr', '.signature-box'] }
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['css', 'legacy'] }
             };
 
-            // Attendre le chargement des images data-URL
-            setTimeout(() => {
-                html2pdf().set(opt).from(container).save()
-                    .then(() => {
+            setTimeout(function() {
+                html2pdf().set(opt).from(root).toPdf().get('pdf').then(function(pdf) {
+                    var total = pdf.internal.getNumberOfPages();
+                    for (var i = 1; i <= total; i++) {
+                        pdf.setPage(i);
+                        pdf.setFontSize(9);
+                        pdf.setTextColor(100);
+                        var w = pdf.internal.pageSize.getWidth();
+                        var h = pdf.internal.pageSize.getHeight();
+                        pdf.text('Page ' + i + ' / ' + total, w / 2, h - 8, { align: 'center' });
+                    }
+                }).save()
+                    .then(function() {
                         if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
                     })
-                    .catch(err => {
+                    .catch(function(err) {
                         console.error('Erreur PDF:', err);
                         if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
                         alert('Erreur lors de la génération du PDF.');
                     });
-            }, 400);
+            }, 600);
         }
 
-        function downloadPDFById(id) {
+        async function downloadPDFById(id) {
+            // Rafraîchir depuis Supabase pour avoir la version signée
+            await syncContractsFromSupabase();
+
             const contract = getSavedContracts().find(c => c.id === id);
             if (!contract) {
                 alert('Contrat introuvable.');
@@ -3453,8 +4072,10 @@
 
                 if (error) throw error;
 
-                // 4. Essayer d'envoyer l'email à l'expéditeur (via Resend)
-                await sendSignedContractEmail(currentSigningContract, signatureData);
+                // 4. Email à l'expéditeur (si activé dans Paramètres)
+                if (getNotifPrefs().emailOnSign !== false) {
+                    await sendSignedContractEmail(currentSigningContract, signatureData);
+                }
 
                 // Mettre à jour le cache local (statut + signatures) pour le dashboard
                 try {
@@ -3477,6 +4098,14 @@
                 showSigningStatus("✅ Contrat signé avec succès ! L'expéditeur a été notifié.", "success");
                 document.getElementById('signingActionBox').style.display = 'none';
                 document.getElementById('downloadSignedBox').style.display = 'block';
+                try {
+                    addNotification(
+                        "Contrat signé",
+                        (currentSigningContract.number || "") + " a été signé par " + (currentSigningContract.closeuse_name || "la closeuse"),
+                        "success",
+                        { number: currentSigningContract.number }
+                    );
+                } catch (e) {}
 
             } catch (err) {
                 console.error(err);
