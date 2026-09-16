@@ -570,6 +570,30 @@
             margin-bottom: 20px;
         }
 
+        .doc-logo {
+            display: none;
+            max-height: 70px;
+            max-width: 180px;
+            margin: 0 auto 10px auto;
+            object-fit: contain;
+        }
+
+        .doc-logo.visible {
+            display: block;
+        }
+
+        .logo-preview-thumb {
+            display: none;
+            max-height: 48px;
+            max-width: 120px;
+            margin-top: 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px;
+            background: #fff;
+            object-fit: contain;
+        }
+
         .doc-main-title {
             font-family: 'Cinzel', serif;
             font-size: 20px;
@@ -1234,6 +1258,10 @@
                                     <div class="form-group">
                                         <label>Logo de l'entreprise</label>
                                         <input type="file" id="compLogoInput" accept="image/*" onchange="handleLogoUpload(event)">
+                                        <img id="logoPreviewThumb" class="logo-preview-thumb" alt="Aperçu logo">
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btnRemoveLogo" style="display:none; margin-top:8px;" onclick="removeCompanyLogo()">
+                                            <i class="fa-solid fa-trash"></i> Retirer le logo
+                                        </button>
                                     </div>
                                 </div>
 
@@ -1402,6 +1430,7 @@
                         <div class="preview-container" id="previewSide">
                             <div class="document-paper" id="contractPaper">
                                 <div class="doc-header-top">
+                                    <img id="docLogoImg" class="doc-logo" alt="Logo entreprise">
                                     <div class="doc-main-title" id="docMainTitle">DOCUMENT CONTRACTUEL</div>
                                     <div class="doc-app-name" id="docAppName">ECOM ACADEMY PRO</div>
                                 </div>
@@ -3086,6 +3115,9 @@
                     customSection.appendChild(div);
                 }
             });
+
+            // Logo entreprise sur le contrat
+            applyLogoToDocument();
         }
 
         // Helper: format date according to language
@@ -3121,12 +3153,56 @@
         // Image Logo Loader
         function handleLogoUpload(event) {
             const file = event.target.files[0];
-            if(file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    logoBase64 = e.target.result;
-                };
-                reader.readAsDataURL(file);
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Logo trop volumineux (max 2 Mo).');
+                event.target.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                logoBase64 = e.target.result;
+                applyLogoToDocument();
+                updatePreview();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeCompanyLogo() {
+            logoBase64 = '';
+            const input = document.getElementById('compLogoInput');
+            if (input) input.value = '';
+            applyLogoToDocument();
+            updatePreview();
+        }
+
+        function applyLogoToDocument() {
+            const docImg = document.getElementById('docLogoImg');
+            const thumb = document.getElementById('logoPreviewThumb');
+            const btnRemove = document.getElementById('btnRemoveLogo');
+
+            if (logoBase64) {
+                if (docImg) {
+                    docImg.src = logoBase64;
+                    docImg.classList.add('visible');
+                    docImg.style.display = 'block';
+                }
+                if (thumb) {
+                    thumb.src = logoBase64;
+                    thumb.style.display = 'block';
+                }
+                if (btnRemove) btnRemove.style.display = 'inline-flex';
+            } else {
+                if (docImg) {
+                    docImg.removeAttribute('src');
+                    docImg.classList.remove('visible');
+                    docImg.style.display = 'none';
+                }
+                if (thumb) {
+                    thumb.removeAttribute('src');
+                    thumb.style.display = 'none';
+                }
+                if (btnRemove) btnRemove.style.display = 'none';
             }
         }
 
@@ -3232,7 +3308,8 @@
             return JSON.parse(localStorage.getItem(STORAGE_KEY_CONTRACTS) || "[]");
         }
 
-        // Synchronise les contrats depuis Supabase (statut + signatures)
+        // Synchronise les contrats depuis Supabase
+        // IMPORTANT: on matche UNIQUEMENT par signing_token (jamais par numéro seul)
         async function syncContractsFromSupabase() {
             if (!supabaseClient) return;
             try {
@@ -3246,53 +3323,78 @@
                 let localContracts = getSavedContracts();
                 let updated = false;
 
-                data.forEach(remote => {
-                    // Cherche le contrat local par numéro ou par signing_token
-                    const idx = localContracts.findIndex(c => 
-                        c.number === remote.number || 
-                        c.signingToken === remote.signing_token
-                    );
+                data.forEach(function(remote) {
+                    if (!remote.signing_token) return;
+
+                    const idx = localContracts.findIndex(function(c) {
+                        return c.signingToken && c.signingToken === remote.signing_token;
+                    });
 
                     if (idx !== -1) {
+                        // Mise à jour du contrat local correspondant (même token)
                         if (remote.status) {
                             localContracts[idx].status = remote.status;
-                            updated = true;
                         }
                         if (remote.closeuse_signature) {
                             localContracts[idx].closeuseSignature = remote.closeuse_signature;
-                            updated = true;
                         }
                         if (remote.company_signature) {
                             localContracts[idx].companySignature = remote.company_signature;
-                            updated = true;
                         }
+                        // HTML distant seulement s'il est plus récent / signé
                         if (remote.html_content && remote.html_content.trim()) {
-                            localContracts[idx].htmlContent = remote.html_content;
-                            updated = true;
+                            if (remote.status === 'Signé' || !localContracts[idx].htmlContent) {
+                                localContracts[idx].htmlContent = remote.html_content;
+                            }
                         }
+                        if (remote.number) localContracts[idx].number = remote.number;
+                        updated = true;
+                    } else {
+                        // Contrat distant inconnu localement → l'ajouter (autre appareil / autre session)
+                        localContracts.push({
+                            id: Date.now() + Math.floor(Math.random() * 10000),
+                            number: remote.number || ('CTR-' + Date.now()),
+                            date: remote.created_at
+                                ? new Date(remote.created_at).toLocaleDateString('fr-FR')
+                                : new Date().toLocaleDateString('fr-FR'),
+                            company: remote.company_name || '',
+                            closeuse: remote.closeuse_name || '',
+                            senderEmail: remote.sender_email || '',
+                            recipientEmail: remote.recipient_email || '',
+                            status: remote.status || 'En attente',
+                            language: remote.language || 'fr',
+                            signingToken: remote.signing_token,
+                            htmlContent: remote.html_content || '',
+                            companySignature: remote.company_signature || null,
+                            closeuseSignature: remote.closeuse_signature || null,
+                            createdAt: remote.created_at || new Date().toISOString()
+                        });
+                        updated = true;
                     }
                 });
 
                 if (updated) {
+                    // Trier du plus récent au plus ancien
+                    localContracts.sort(function(a, b) {
+                        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                    });
                     localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(localContracts));
                     console.log("✅ Contrats synchronisés depuis Supabase");
-                    // Notifications pour nouveaux contrats signés détectés
+
                     data.forEach(function(remote) {
-                        if (remote.status === "Signé") {
-                            var local = localContracts.find(function(c) {
-                                return c.number === remote.number || c.signingToken === remote.signing_token;
-                            });
-                            if (local && local.status === "Signé") {
-                                var key = "notified_signed_" + remote.number;
-                                if (!sessionStorage.getItem(key)) {
-                                    sessionStorage.setItem(key, "1");
-                                    addNotification(
-                                        "Contrat signé",
-                                        remote.number + " — " + (remote.closeuse_name || ""),
-                                        "success",
-                                        { contractId: local.id, number: remote.number }
-                                    );
-                                }
+                        if (remote.status === "Signé" && remote.signing_token) {
+                            var key = "notified_signed_" + remote.signing_token;
+                            if (!sessionStorage.getItem(key)) {
+                                sessionStorage.setItem(key, "1");
+                                var local = localContracts.find(function(c) {
+                                    return c.signingToken === remote.signing_token;
+                                });
+                                addNotification(
+                                    "Contrat signé",
+                                    (remote.number || "") + " — " + (remote.closeuse_name || ""),
+                                    "success",
+                                    { contractId: local ? local.id : null, number: remote.number }
+                                );
                             }
                         }
                     });
@@ -3300,6 +3402,21 @@
             } catch (err) {
                 console.warn("Erreur sync Supabase:", err.message);
             }
+        }
+
+        function nextContractNumber(contracts) {
+            const year = new Date().getFullYear();
+            let maxSeq = 0;
+            (contracts || []).forEach(function(c) {
+                const m = String(c.number || '').match(/CTR-\d{4}-(\d+)/);
+                if (m) {
+                    const n = parseInt(m[1], 10);
+                    if (n > maxSeq) maxSeq = n;
+                }
+            });
+            // + timestamp fragment pour éviter collision avec d'anciens numéros distants
+            const seq = String(maxSeq + 1).padStart(4, '0');
+            return 'CTR-' + year + '-' + seq;
         }
 
         async function generateAndSaveContract() {
@@ -3312,8 +3429,7 @@
             }
 
             const contracts = getSavedContracts();
-            const year = new Date().getFullYear();
-            const contractNum = `CTR-${year}-${String(contracts.length + 1).padStart(4, '0')}`;
+            const contractNum = nextContractNumber(contracts);
             const signingToken = generateSigningToken();
             
             const newContract = {
@@ -3336,6 +3452,8 @@
             // 1. Sauvegarde locale (fonctionne toujours)
             contracts.unshift(newContract);
             localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(contracts));
+            // Rafraîchir immédiatement les listes
+            try { renderDashboard(); renderAllContracts(); } catch (e) {}
 
             // 2. Tentative d'envoi vers Supabase (si configuré)
             let onlineSuccess = false;
@@ -3574,6 +3692,14 @@
     border-bottom: 2px solid #111827;
     padding-bottom: 12px;
     margin: 0 0 16px 0;
+  }
+  .pdf-root .doc-logo,
+  .pdf-root #docLogoImg {
+    display: block !important;
+    max-height: 70px;
+    max-width: 160px;
+    margin: 0 auto 10px auto;
+    object-fit: contain;
   }
   .pdf-root .doc-main-title {
     font-size: 18px;
@@ -4182,4 +4308,3 @@
     </script>
 </body>
 </html>
-Vercel project source file not found - Grok
