@@ -1020,25 +1020,9 @@
             </div>
 
             <nav class="nav-menu">
-                <a class="nav-item active" onclick="switchView('dashboardView')">
-                    <i class="fa-solid fa-chart-pie"></i>
-                    <span>Tableau de bord</span>
-                </a>
-                <a class="nav-item" onclick="startNewContract()">
-                    <i class="fa-solid fa-plus-circle"></i>
-                    <span>Nouveau contrat</span>
-                </a>
-                <a class="nav-item" onclick="switchView('contractsView')">
-                    <i class="fa-solid fa-folder-open"></i>
-                    <span>Mes contrats</span>
-                </a>
-                <a class="nav-item" onclick="switchView('modelsView')">
-                    <i class="fa-solid fa-bookmark"></i>
-                    <span>Mes modèles</span>
-                </a>
-                <a class="nav-item" onclick="switchView('companyView')">
-                    <i class="fa-solid fa-building"></i>
-                    <span>Mon Entreprise</span>
+                <a class="nav-item active" id="navNewContract" onclick="startNewContract()">
+                    <i class="fa-solid fa-file-signature"></i>
+                    <span>Créer un contrat</span>
                 </a>
                 <a class="nav-item" onclick="switchView('settingsView')">
                     <i class="fa-solid fa-gear"></i>
@@ -1073,7 +1057,7 @@
                         </div>
                     </div>
                     <button class="btn btn-primary" onclick="startNewContract()">
-                        <i class="fa-solid fa-plus"></i> Nouveau Contrat
+                        <i class="fa-solid fa-file-signature"></i> Nouveau contrat
                     </button>
                 </div>
             </header>
@@ -1081,7 +1065,7 @@
             <div class="content-area">
 
                 <!-- 1. DASHBOARD VIEW -->
-                <section id="dashboardView" class="view-section active">
+                <section id="dashboardView" class="view-section" style="display:none !important;">
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-icon blue"><i class="fa-solid fa-file-signature"></i></div>
@@ -1137,7 +1121,7 @@
                 </section>
 
                 <!-- 2. GENERATOR WIZARD VIEW -->
-                <section id="generatorView" class="view-section">
+                <section id="generatorView" class="view-section active">
                     <div class="wizard-header">
                         <div class="progress-bar-container">
                             <div class="progress-line" id="progressLine"></div>
@@ -1516,7 +1500,7 @@
                 </section>
 
                 <!-- 3. CONTRACTS LIST VIEW -->
-                <section id="contractsView" class="view-section">
+                <section id="contractsView" class="view-section" style="display:none !important;">
                     <div class="section-header">
                         <h2 class="section-title">Liste de tous les contrats</h2>
                         <input type="text" id="searchContractInput" placeholder="Rechercher par nom ou N°..." style="width:250px;" oninput="filterContracts()">
@@ -2726,12 +2710,12 @@
             } else {
                 // Mode normal
                 loadCompanyProfile();
-                renderDashboard();
                 initSignatureCanvas();
-                updatePreview();
                 loadNotifPrefsToUI();
                 renderNotificationUI();
                 registerServiceWorker().then(updatePushPermissionLabel);
+                // Accueil = formulaire neuf (pas de liste / pas d'historique)
+                startNewContract();
             }
         });
 
@@ -2871,24 +2855,48 @@
             };
             document.getElementById('pageTitle').innerText = titles[viewId] || 'ECOM ACADEMY PRO';
 
-            if(viewId === 'contractsView' || viewId === 'dashboardView') {
-                // Synchronise d'abord depuis Supabase puis affiche (toujours)
-                const refresh = () => {
-                    if(viewId === 'contractsView') renderAllContracts();
-                    if(viewId === 'dashboardView') renderDashboard();
-                };
-                syncContractsFromSupabase().then(refresh).catch(refresh);
-            }
+            // Pas de liste de contrats côté e-commerçant
         }
 
         function startNewContract() {
+            // Formulaire neuf à chaque fois (pas d'historique)
             switchView('generatorView');
             currentStep = 1;
             currentLang = "fr";
             const langSelect = document.getElementById('contractLang');
             if (langSelect) langSelect.value = "fr";
+
+            // Reset closeuse + dates + commissions (modèle par défaut)
+            const clearIds = [
+                'closeuseLastName','closeuseFirstName','closeusePhone','closeuseEmail','closeuseAddress',
+                'customMissions','livreurNotes'
+            ];
+            clearIds.forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
+            // Signatures à zéro
+            if (typeof compSignatureData !== 'undefined') compSignatureData = '';
+            if (typeof closeuseSignatureData !== 'undefined') closeuseSignatureData = '';
+            var compStat = document.getElementById('compSigStatus');
+            var closeStat = document.getElementById('closeuseSigStatus');
+            if (compStat) compStat.innerText = '';
+            if (closeStat) closeStat.innerText = '';
+            var docComp = document.getElementById('docSigCompImg');
+            var docClose = document.getElementById('docSigCloseuseImg');
+            if (docComp) { docComp.removeAttribute('src'); docComp.style.display = 'none'; }
+            if (docClose) { docClose.removeAttribute('src'); docClose.style.display = 'none'; }
+
+            // Logo optionnel : on garde si déjà choisi, sinon rien
             updateStepVisibility();
             updatePreview();
+
+            // Activer l'item de nav
+            document.querySelectorAll('.nav-item').forEach(function(el) { el.classList.remove('active'); });
+            var nav = document.getElementById('navNewContract');
+            if (nav) nav.classList.add('active');
+            document.getElementById('pageTitle').innerText = 'Créer un contrat';
         }
 
         // Wizard Step Manager
@@ -3303,120 +3311,72 @@
             document.getElementById('sigModal').classList.remove('active');
         }
 
-        // Storage & Generation Operations
-        function getSavedContracts() {
-            return JSON.parse(localStorage.getItem(STORAGE_KEY_CONTRACTS) || "[]");
+        // ========== CONTRATS 100% EN LIGNE (Supabase) ==========
+        // Mémoire session uniquement (pas de localStorage pour les contrats)
+        var contractsCache = [];
+
+        function mapRemoteContract(remote) {
+            return {
+                id: remote.id,
+                number: remote.number || '',
+                date: remote.created_at
+                    ? new Date(remote.created_at).toLocaleDateString('fr-FR')
+                    : new Date().toLocaleDateString('fr-FR'),
+                company: remote.company_name || '',
+                closeuse: remote.closeuse_name || '',
+                senderEmail: remote.sender_email || '',
+                recipientEmail: remote.recipient_email || '',
+                status: remote.status || 'En attente',
+                language: remote.language || 'fr',
+                signingToken: remote.signing_token || '',
+                htmlContent: remote.html_content || '',
+                companySignature: remote.company_signature || null,
+                closeuseSignature: remote.closeuse_signature || null,
+                createdAt: remote.created_at || new Date().toISOString()
+            };
         }
 
-        // Synchronise les contrats depuis Supabase
-        // IMPORTANT: on matche UNIQUEMENT par signing_token (jamais par numéro seul)
-        async function syncContractsFromSupabase() {
-            if (!supabaseClient) return;
+        function getSavedContracts() {
+            return contractsCache.slice();
+        }
+
+        async function fetchContractsOnline() {
+            if (!supabaseClient) {
+                console.warn('Supabase non initialisé');
+                contractsCache = [];
+                return [];
+            }
             try {
-                const { data, error } = await supabaseClient
+                var res = await supabaseClient
                     .from('contracts')
                     .select('*')
                     .order('created_at', { ascending: false });
-
-                if (error || !data) return;
-
-                let localContracts = getSavedContracts();
-                let updated = false;
-
-                data.forEach(function(remote) {
-                    if (!remote.signing_token) return;
-
-                    const idx = localContracts.findIndex(function(c) {
-                        return c.signingToken && c.signingToken === remote.signing_token;
-                    });
-
-                    if (idx !== -1) {
-                        // Mise à jour du contrat local correspondant (même token)
-                        if (remote.status) {
-                            localContracts[idx].status = remote.status;
-                        }
-                        if (remote.closeuse_signature) {
-                            localContracts[idx].closeuseSignature = remote.closeuse_signature;
-                        }
-                        if (remote.company_signature) {
-                            localContracts[idx].companySignature = remote.company_signature;
-                        }
-                        // HTML distant seulement s'il est plus récent / signé
-                        if (remote.html_content && remote.html_content.trim()) {
-                            if (remote.status === 'Signé' || !localContracts[idx].htmlContent) {
-                                localContracts[idx].htmlContent = remote.html_content;
-                            }
-                        }
-                        if (remote.number) localContracts[idx].number = remote.number;
-                        updated = true;
-                    } else {
-                        // Contrat distant inconnu localement → l'ajouter (autre appareil / autre session)
-                        localContracts.push({
-                            id: Date.now() + Math.floor(Math.random() * 10000),
-                            number: remote.number || ('CTR-' + Date.now()),
-                            date: remote.created_at
-                                ? new Date(remote.created_at).toLocaleDateString('fr-FR')
-                                : new Date().toLocaleDateString('fr-FR'),
-                            company: remote.company_name || '',
-                            closeuse: remote.closeuse_name || '',
-                            senderEmail: remote.sender_email || '',
-                            recipientEmail: remote.recipient_email || '',
-                            status: remote.status || 'En attente',
-                            language: remote.language || 'fr',
-                            signingToken: remote.signing_token,
-                            htmlContent: remote.html_content || '',
-                            companySignature: remote.company_signature || null,
-                            closeuseSignature: remote.closeuse_signature || null,
-                            createdAt: remote.created_at || new Date().toISOString()
-                        });
-                        updated = true;
-                    }
-                });
-
-                if (updated) {
-                    // Trier du plus récent au plus ancien
-                    localContracts.sort(function(a, b) {
-                        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-                    });
-                    localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(localContracts));
-                    console.log("✅ Contrats synchronisés depuis Supabase");
-
-                    data.forEach(function(remote) {
-                        if (remote.status === "Signé" && remote.signing_token) {
-                            var key = "notified_signed_" + remote.signing_token;
-                            if (!sessionStorage.getItem(key)) {
-                                sessionStorage.setItem(key, "1");
-                                var local = localContracts.find(function(c) {
-                                    return c.signingToken === remote.signing_token;
-                                });
-                                addNotification(
-                                    "Contrat signé",
-                                    (remote.number || "") + " — " + (remote.closeuse_name || ""),
-                                    "success",
-                                    { contractId: local ? local.id : null, number: remote.number }
-                                );
-                            }
-                        }
-                    });
-                }
+                if (res.error) throw res.error;
+                contractsCache = (res.data || []).map(mapRemoteContract);
+                console.log('✅ Contrats chargés depuis Supabase:', contractsCache.length);
+                return contractsCache;
             } catch (err) {
-                console.warn("Erreur sync Supabase:", err.message);
+                console.warn('Erreur chargement contrats:', err.message || err);
+                return contractsCache;
             }
         }
 
+        // Compat: ancien nom utilisé ailleurs
+        async function syncContractsFromSupabase() {
+            return fetchContractsOnline();
+        }
+
         function nextContractNumber(contracts) {
-            const year = new Date().getFullYear();
-            let maxSeq = 0;
+            var year = new Date().getFullYear();
+            var maxSeq = 0;
             (contracts || []).forEach(function(c) {
-                const m = String(c.number || '').match(/CTR-\d{4}-(\d+)/);
+                var m = String(c.number || '').match(/CTR-\d{4}-(\d+)/);
                 if (m) {
-                    const n = parseInt(m[1], 10);
+                    var n = parseInt(m[1], 10);
                     if (n > maxSeq) maxSeq = n;
                 }
             });
-            // + timestamp fragment pour éviter collision avec d'anciens numéros distants
-            const seq = String(maxSeq + 1).padStart(4, '0');
-            return 'CTR-' + year + '-' + seq;
+            return 'CTR-' + year + '-' + String(maxSeq + 1).padStart(4, '0');
         }
 
         async function generateAndSaveContract() {
@@ -3428,60 +3388,56 @@
                 return;
             }
 
-            const contracts = getSavedContracts();
-            const contractNum = nextContractNumber(contracts);
+            if (!supabaseClient) {
+                alert("Connexion Supabase indisponible. Impossible d'enregistrer le contrat en ligne.");
+                return;
+            }
+
+            // Numéro unique sans historique marchand
+            const contractNum = 'CTR-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-6);
             const signingToken = generateSigningToken();
             
             const newContract = {
-                id: Date.now(),
                 number: contractNum,
-                date: new Date().toLocaleDateString('fr-FR'),
                 company: document.getElementById('compName').value,
                 closeuse: `${document.getElementById('closeuseFirstName').value} ${document.getElementById('closeuseLastName').value}`,
                 senderEmail: senderEmail,
                 recipientEmail: recipientEmail,
-                status: "En attente", // Devient "Signé" uniquement après validation par la closeuse
+                status: "En attente",
                 language: currentLang,
                 signingToken: signingToken,
                 htmlContent: document.getElementById('contractPaper').innerHTML,
-                companySignature: compSignatureData || null,
-                closeuseSignature: null, // Uniquement après validation via le lien
-                createdAt: new Date().toISOString()
+                companySignature: compSignatureData || null
             };
 
-            // 1. Sauvegarde locale (fonctionne toujours)
-            contracts.unshift(newContract);
-            localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(contracts));
-            // Rafraîchir immédiatement les listes
-            try { renderDashboard(); renderAllContracts(); } catch (e) {}
-
-            // 2. Tentative d'envoi vers Supabase (si configuré)
+            // Enregistrement UNIQUEMENT en ligne (Supabase)
             let onlineSuccess = false;
-            if (supabaseClient) {
-                try {
-                    const { data, error } = await supabaseClient
-                        .from('contracts')
-                        .insert([{
-                            number: contractNum,
-                            company_name: newContract.company,
-                            closeuse_name: newContract.closeuse,
-                            sender_email: senderEmail,
-                            recipient_email: recipientEmail,
-                            status: newContract.status,
-                            language: currentLang,
-                            signing_token: signingToken,
-                            html_content: newContract.htmlContent,
-                            company_signature: compSignatureData || null,
-                            closeuse_signature: null
-                        }])
-                        .select();
+            try {
+                const { data, error } = await supabaseClient
+                    .from('contracts')
+                    .insert([{
+                        number: contractNum,
+                        company_name: newContract.company,
+                        closeuse_name: newContract.closeuse,
+                        sender_email: senderEmail,
+                        recipient_email: recipientEmail,
+                        status: newContract.status,
+                        language: currentLang,
+                        signing_token: signingToken,
+                        html_content: newContract.htmlContent,
+                        company_signature: compSignatureData || null,
+                        closeuse_signature: null
+                    }])
+                    .select();
 
-                    if (error) throw error;
-                    onlineSuccess = true;
-                    console.log("Contrat sauvegardé sur Supabase:", data);
-                } catch (err) {
-                    console.warn("Erreur Supabase (le contrat reste sauvé localement):", err.message);
-                }
+                if (error) throw error;
+                onlineSuccess = true;
+                console.log("Contrat sauvegardé sur Supabase:", data);
+                // Rafraîchir la liste depuis le serveur
+            } catch (err) {
+                console.error("Erreur Supabase:", err);
+                alert("Échec de l'enregistrement en ligne : " + (err.message || err) + "\nVérifiez votre connexion et Supabase.");
+                return;
             }
 
             // 3. Envoi email + modal avec lien cliquable
@@ -3522,7 +3478,8 @@
                 "info",
                 { contractId: newContract.id, number: contractNum }
             );
-            switchView('contractsView');
+            // Reste sur le générateur — pas d'historique marchand
+            startNewContract();
         }
 
         let lastSigningLink = '';
@@ -3542,7 +3499,7 @@
                     html += '<p style="color:#b45309;">⚠️ Email non envoyé automatiquement — copiez le lien et envoyez-le manuellement.</p>';
                 }
             } else {
-                html += '<p style="color:#b45309;">💾 Enregistré localement. Vérifiez la connexion Supabase.</p>';
+                html += '<p style="color:#b45309;">⚠️ Enregistrement en ligne incomplet.</p>';
                 if (opts.signingLink) {
                     html += '<p style="margin-top:12px; word-break:break-all;"><a href="' + opts.signingLink + '" target="_blank" rel="noopener" style="color:var(--accent);">' + opts.signingLink + '</a></p>';
                 }
@@ -3569,8 +3526,15 @@
             });
         }
 
-        function viewContractById(id) {
-            const contract = getSavedContracts().find(function(c) { return c.id === id; });
+        async function viewContractById(id) {
+            await fetchContractsOnline();
+            let contract = getSavedContracts().find(function(c) { return String(c.id) === String(id); });
+            if ((!contract || !contract.htmlContent) && supabaseClient) {
+                try {
+                    var res = await supabaseClient.from('contracts').select('*').eq('id', id).single();
+                    if (res.data) contract = mapRemoteContract(res.data);
+                } catch (e) {}
+            }
             if (!contract || !contract.htmlContent) {
                 alert('Contrat introuvable ou contenu vide.');
                 return;
@@ -3623,16 +3587,20 @@
 
             const tbody = document.getElementById('recentContractsTable');
             tbody.innerHTML = "";
+            if (!contracts.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Aucun contrat en ligne pour le moment.</td></tr>';
+            }
             contracts.slice(0, 5).forEach(c => {
                 const tr = document.createElement('tr');
+                const safeId = String(c.id).replace(/'/g, '');
                 tr.innerHTML = `
                     <td><strong>${c.number}</strong></td>
                     <td>${c.closeuse}</td>
                     <td>${c.date}</td>
                     <td><span class="badge ${c.status === 'Signé' ? 'badge-signed' : 'badge-pending'}">${c.status}</span></td>
                     <td>
-                        <button class="btn btn-secondary btn-sm" onclick="viewContractById(${c.id})" title="Aperçu"><i class="fa-solid fa-eye"></i></button>
-                        <button class="btn btn-secondary btn-sm" onclick="downloadPDFById(${c.id})"><i class="fa-solid fa-print"></i> PDF</button>
+                        <button class="btn btn-secondary btn-sm" onclick="viewContractById('${safeId}')" title="Aperçu"><i class="fa-solid fa-eye"></i></button>
+                        <button class="btn btn-secondary btn-sm" onclick="downloadPDFById('${safeId}')"><i class="fa-solid fa-print"></i> PDF</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -3643,33 +3611,46 @@
             const contracts = getSavedContracts();
             const tbody = document.getElementById('allContractsTable');
             tbody.innerHTML = "";
+            if (!contracts.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Aucun contrat en ligne. Générez-en un nouveau.</td></tr>';
+                return;
+            }
             contracts.forEach(c => {
                 const tr = document.createElement('tr');
+                const safeId = String(c.id).replace(/'/g, '');
                 tr.innerHTML = `
                     <td><strong>${c.number}</strong></td>
                     <td>${c.closeuse}</td>
                     <td>${c.date}</td>
                     <td><span class="badge ${c.status === 'Signé' ? 'badge-signed' : 'badge-pending'}">${c.status}</span></td>
                     <td>
-                        <button class="btn btn-secondary btn-sm" onclick="viewContractById(${c.id})" title="Aperçu"><i class="fa-solid fa-eye"></i></button>
-                        <button class="btn btn-secondary btn-sm" onclick="downloadPDFById(${c.id})"><i class="fa-solid fa-print"></i> PDF</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteContract(${c.id})"><i class="fa-solid fa-trash"></i></button>
+                        <button class="btn btn-secondary btn-sm" onclick="viewContractById('${safeId}')" title="Aperçu"><i class="fa-solid fa-eye"></i></button>
+                        <button class="btn btn-secondary btn-sm" onclick="downloadPDFById('${safeId}')"><i class="fa-solid fa-print"></i> PDF</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteContract('${safeId}')"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        function deleteContract(id) {
-            if(confirm("Voulez-vous vraiment supprimer ce contrat ?")) {
-                let contracts = getSavedContracts().filter(c => c.id !== id);
-                localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(contracts));
+        async function deleteContract(id) {
+            if (!confirm("Voulez-vous vraiment supprimer ce contrat ?")) return;
+            if (!supabaseClient) {
+                alert('Supabase indisponible.');
+                return;
+            }
+            try {
+                const { error } = await supabaseClient.from('contracts').delete().eq('id', id);
+                if (error) throw error;
+                await fetchContractsOnline();
                 renderAllContracts();
                 renderDashboard();
+            } catch (err) {
+                alert('Suppression impossible : ' + (err.message || err));
             }
         }
 
-        // ========== PDF via impression navigateur (Enregistrer en PDF) ==========
+        // ========== PDF A4 via impression navigateur ==========
         function generateContractPDF(htmlContent, filename, closeuseSignature, companySignature, sourceElement) {
             filename = filename || 'contrat.pdf';
 
@@ -3677,7 +3658,7 @@
             if (sourceElement && sourceElement.innerHTML && sourceElement.innerHTML.trim()) {
                 html = sourceElement.innerHTML;
             } else if (htmlContent && String(htmlContent).trim()) {
-                html = htmlContent;
+                html = String(htmlContent);
             } else {
                 alert('Le contenu du contrat est vide. Impossible de générer le PDF.');
                 return;
@@ -3708,7 +3689,6 @@
                 img.style.maxHeight = '60px';
             });
 
-            // Signatures en tableau pour l'impression
             var sigBlock = tmp.querySelector('.doc-signatures');
             if (sigBlock) {
                 var boxes = sigBlock.querySelectorAll('.signature-box');
@@ -3728,173 +3708,123 @@
                 }
             }
 
-            var printWin = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1000');
-            if (!printWin) {
-                alert('Autorisez les pop-ups pour enregistrer le PDF, puis réessayez.');
-                return;
+            var docTitle = String(filename || 'contrat').replace(/\.pdf$/i, '').replace(/[<>]/g, '');
+            var bodyHtml = tmp.innerHTML;
+
+            var fullHtml = '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">' +
+                '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+                '<title>' + docTitle + '</title>' +
+                '<style>' +
+                '@page { size: A4 portrait; margin: 15mm 12mm 18mm 12mm; }' +
+                '* { box-sizing: border-box; }' +
+                'html, body { margin: 0; padding: 0; background: #fff; color: #111; ' +
+                'font-family: "Times New Roman", Times, serif; font-size: 11.5pt; line-height: 1.5; ' +
+                '-webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
+                '.print-root { width: 100%; max-width: 100%; margin: 0; padding: 0; }' +
+                '.doc-header-top { text-align: center; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 12px; }' +
+                '.doc-logo, #docLogoImg { display: block; max-height: 64px; max-width: 150px; margin: 0 auto 8px auto; object-fit: contain; }' +
+                '.doc-main-title { font-size: 15pt; font-weight: bold; margin: 0; letter-spacing: 0.3px; }' +
+                '.doc-app-name { font-size: 11pt; font-weight: bold; color: #2563eb; margin-top: 3px; }' +
+                '.doc-sub-header { text-align: center; font-weight: bold; font-size: 10.5pt; text-transform: uppercase; margin: 0 0 10px 0; }' +
+                'p { margin: 0 0 7px 0; }' +
+                '.doc-section-title { font-size: 10.5pt; font-weight: bold; text-transform: uppercase; margin: 12px 0 5px 0; ' +
+                'padding-bottom: 2px; border-bottom: 1px solid #ccc; page-break-after: avoid; }' +
+                '.doc-table-info { width: 100%; border-collapse: collapse; margin: 0 0 10px 0; table-layout: fixed; }' +
+                '.doc-table-info th, .doc-table-info td { border: 1px solid #999; padding: 5px 7px; font-size: 10pt; ' +
+                'text-align: left; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }' +
+                '.doc-table-info th { background: #f0f0f0; font-weight: bold; }' +
+                'ul { margin: 0 0 7px 0; padding-left: 18px; } li { margin-bottom: 2px; }' +
+                '.doc-signatures { margin-top: 20px; page-break-inside: avoid; }' +
+                '.sig-print-table { width: 100%; border-collapse: separate; border-spacing: 10px 0; table-layout: fixed; }' +
+                '.sig-print-table td { width: 50%; vertical-align: top; border: 1px dashed #999; padding: 8px; background: #fafafa; }' +
+                '.signature-box { border: none; padding: 0; min-height: 0; background: transparent; }' +
+                '.signature-img { display: block !important; max-height: 55px; max-width: 170px; margin-top: 6px; }' +
+                '.print-toolbar { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #333; ' +
+                'text-align: center; margin: 0 0 16px 0; padding: 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; }' +
+                '.print-toolbar strong { color: #1d4ed8; }' +
+                '@media print { .print-toolbar { display: none !important; } body { background: #fff; } }' +
+                '</style></head><body>' +
+                '<div class="print-toolbar">' +
+                '<strong>Enregistrer en PDF :</strong> dans la fenêtre suivante, choisissez ' +
+                '<em>« Enregistrer au format PDF »</em> (Chrome) ou <em>« Microsoft Print to PDF »</em>, ' +
+                'marges <em>Par défaut</em>, puis Enregistrer.' +
+                '</div>' +
+                '<div class="print-root">' + bodyHtml + '</div>' +
+                '<script>' +
+                '(function(){' +
+                '  function doPrint(){ try { window.focus(); window.print(); } catch(e) {} }' +
+                '  function waitImages(cb){' +
+                '    var imgs = Array.prototype.slice.call(document.images || []);' +
+                '    if(!imgs.length){ cb(); return; }' +
+                '    var left = imgs.length;' +
+                '    function done(){ left--; if(left<=0) cb(); }' +
+                '    imgs.forEach(function(img){' +
+                '      if(img.complete) done();' +
+                '      else { img.onload = done; img.onerror = done; }' +
+                '    });' +
+                '    setTimeout(cb, 2000);' +
+                '  }' +
+                '  window.addEventListener("load", function(){ waitImages(function(){ setTimeout(doPrint, 250); }); });' +
+                '})();' +
+                '<\/script></body></html>';
+
+            try {
+                var blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+                var url = URL.createObjectURL(blob);
+                var printWin = window.open(url, '_blank');
+                if (!printWin) {
+                    // Fallback iframe si pop-up bloquée
+                    var iframe = document.getElementById('pdf-print-frame');
+                    if (!iframe) {
+                        iframe = document.createElement('iframe');
+                        iframe.id = 'pdf-print-frame';
+                        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+                        document.body.appendChild(iframe);
+                    }
+                    iframe.onload = function() {
+                        try {
+                            iframe.contentWindow.focus();
+                            iframe.contentWindow.print();
+                        } catch (e) {
+                            alert('Pop-up bloquée. Autorisez les fenêtres pop-up pour ce site, puis réessayez.');
+                        }
+                    };
+                    iframe.src = url;
+                    setTimeout(function() { try { URL.revokeObjectURL(url); } catch (e) {} }, 120000);
+                    return;
+                }
+                setTimeout(function() { try { URL.revokeObjectURL(url); } catch (e) {} }, 120000);
+            } catch (err) {
+                console.error(err);
+                alert('Erreur lors de la préparation du PDF : ' + (err.message || err));
             }
-
-            var docTitle = (filename || 'contrat').replace(/\.pdf$/i, '');
-            var styles = `
-                <style>
-                    @page {
-                        size: A4;
-                        margin: 14mm 14mm 16mm 14mm;
-                    }
-                    * { box-sizing: border-box; }
-                    html, body {
-                        margin: 0;
-                        padding: 0;
-                        background: #fff;
-                        color: #111827;
-                        font-family: "Times New Roman", Times, serif;
-                        font-size: 12.5pt;
-                        line-height: 1.55;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    .print-root {
-                        width: 100%;
-                        max-width: 100%;
-                        padding: 0;
-                        margin: 0;
-                    }
-                    .doc-header-top {
-                        text-align: center;
-                        border-bottom: 2px solid #111827;
-                        padding-bottom: 10px;
-                        margin-bottom: 14px;
-                    }
-                    .doc-logo, #docLogoImg {
-                        display: block;
-                        max-height: 70px;
-                        max-width: 160px;
-                        margin: 0 auto 10px auto;
-                        object-fit: contain;
-                    }
-                    .doc-main-title {
-                        font-size: 16pt;
-                        font-weight: bold;
-                        letter-spacing: 0.3px;
-                        margin: 0;
-                    }
-                    .doc-app-name {
-                        font-size: 12pt;
-                        font-weight: bold;
-                        color: #2563eb;
-                        margin-top: 4px;
-                    }
-                    .doc-sub-header {
-                        text-align: center;
-                        font-weight: bold;
-                        font-size: 11pt;
-                        text-transform: uppercase;
-                        margin: 0 0 12px 0;
-                    }
-                    p { margin: 0 0 8px 0; }
-                    .doc-section-title {
-                        font-size: 11pt;
-                        font-weight: bold;
-                        text-transform: uppercase;
-                        margin: 14px 0 6px 0;
-                        padding-bottom: 3px;
-                        border-bottom: 1px solid #e5e7eb;
-                        page-break-after: avoid;
-                    }
-                    .doc-table-info {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin: 0 0 12px 0;
-                        table-layout: fixed;
-                    }
-                    .doc-table-info th,
-                    .doc-table-info td {
-                        border: 1px solid #cbd5e1;
-                        padding: 6px 8px;
-                        font-size: 10.5pt;
-                        text-align: left;
-                        vertical-align: top;
-                        word-wrap: break-word;
-                    }
-                    .doc-table-info th {
-                        background: #f1f5f9;
-                        font-weight: bold;
-                    }
-                    ul {
-                        margin: 0 0 8px 0;
-                        padding-left: 20px;
-                    }
-                    li { margin-bottom: 3px; }
-                    .doc-signatures {
-                        margin-top: 24px;
-                        page-break-inside: avoid;
-                    }
-                    .sig-print-table {
-                        width: 100%;
-                        border-collapse: separate;
-                        border-spacing: 12px 0;
-                        table-layout: fixed;
-                    }
-                    .sig-print-table td {
-                        width: 50%;
-                        vertical-align: top;
-                        border: 1px dashed #cbd5e1;
-                        padding: 10px;
-                        background: #fafafa;
-                    }
-                    .signature-img {
-                        display: block;
-                        max-height: 55px;
-                        max-width: 180px;
-                        margin-top: 6px;
-                    }
-                    .print-hint {
-                        font-family: system-ui, sans-serif;
-                        font-size: 13px;
-                        color: #64748b;
-                        text-align: center;
-                        margin: 16px 0 24px 0;
-                        padding: 10px;
-                        background: #f8fafc;
-                        border: 1px solid #e2e8f0;
-                        border-radius: 8px;
-                    }
-                    @media print {
-                        .print-hint { display: none !important; }
-                        body { background: #fff; }
-                    }
-                </style>
-            `;
-
-            printWin.document.open();
-            printWin.document.write(
-                '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' +
-                docTitle.replace(/</g, '') +
-                '</title>' + styles +
-                '</head><body>' +
-                '<div class="print-hint"><strong>Pour enregistrer en PDF :</strong> dans la fenêtre d\'impression, choisissez <em>Enregistrer au format PDF</em> (ou Microsoft Print to PDF), puis Enregistrer.</div>' +
-                '<div class="print-root">' + tmp.innerHTML + '</div>' +
-                '<script>(function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}}, 400);})();<\/script>' +
-                '</body></html>'
-            );
-            printWin.document.close();
         }
 
         async function downloadPDFById(id) {
-            // Rafraîchir depuis Supabase pour avoir la version signée
-            await syncContractsFromSupabase();
+            await fetchContractsOnline();
+            var contract = getSavedContracts().find(function(c) { return String(c.id) === String(id); });
 
-            const contract = getSavedContracts().find(c => c.id === id);
+            if ((!contract || !contract.htmlContent) && supabaseClient) {
+                try {
+                    var res = await supabaseClient.from('contracts').select('*').eq('id', id).single();
+                    if (res.data) contract = mapRemoteContract(res.data);
+                } catch (e) {
+                    console.warn(e);
+                }
+            }
+
             if (!contract) {
                 alert('Contrat introuvable.');
                 return;
             }
-            if (!contract.htmlContent || !contract.htmlContent.trim()) {
-                alert('Le contenu du contrat est vide.');
+
+            if (!contract.htmlContent || !String(contract.htmlContent).trim()) {
+                alert('Le contenu du contrat est vide sur le serveur.\nRégénérez un nouveau contrat si besoin.');
                 return;
             }
-            const statusLabel = contract.status === 'Signé' ? '_signe' : '';
-            const filename = (contract.number || 'contrat') + '_' +
+
+            var statusLabel = contract.status === 'Signé' ? '_signe' : '';
+            var filename = (contract.number || 'contrat') + '_' +
                 (contract.closeuse || 'doc').replace(/\s+/g, '_') + statusLabel + '.pdf';
 
             generateContractPDF(
@@ -3952,9 +3882,10 @@
         }
 
         function exportDataJSON() {
+            // Les contrats sont en ligne (Supabase). On n'exporte que le profil entreprise local.
             const data = {
                 company: localStorage.getItem(STORAGE_KEY_COMPANY),
-                contracts: localStorage.getItem(STORAGE_KEY_CONTRACTS)
+                note: "Les contrats sont stockés sur Supabase, pas dans ce fichier."
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -3972,8 +3903,7 @@
                 try {
                     const parsed = JSON.parse(evt.target.result);
                     if(parsed.company) localStorage.setItem(STORAGE_KEY_COMPANY, parsed.company);
-                    if(parsed.contracts) localStorage.setItem(STORAGE_KEY_CONTRACTS, parsed.contracts);
-                    alert("Données restaurées avec succès !");
+                    alert("Profil entreprise restauré. Les contrats restent gérés en ligne (Supabase).");
                     location.reload();
                 } catch(err) {
                     alert("Fichier JSON invalide.");
@@ -4178,23 +4108,9 @@
                     await sendSignedContractEmail(currentSigningContract, signatureData);
                 }
 
-                // Mettre à jour le cache local (statut + signatures) pour le dashboard
-                try {
-                    let locals = getSavedContracts();
-                    const idx = locals.findIndex(c =>
-                        c.number === currentSigningContract.number ||
-                        c.signingToken === currentSigningContract.signing_token
-                    );
-                    if (idx !== -1) {
-                        locals[idx].status = 'Signé';
-                        locals[idx].closeuseSignature = signatureData;
-                        locals[idx].htmlContent = signedHtml;
-                        localStorage.setItem(STORAGE_KEY_CONTRACTS, JSON.stringify(locals));
-                    }
-                    currentSigningContract.status = 'Signé';
-                    currentSigningContract.closeuse_signature = signatureData;
-                    currentSigningContract.html_content = signedHtml;
-                } catch (e) { console.warn(e); }
+                currentSigningContract.status = 'Signé';
+                currentSigningContract.closeuse_signature = signatureData;
+                currentSigningContract.html_content = signedHtml;
 
                 showSigningStatus("✅ Contrat signé avec succès ! L'expéditeur a été notifié.", "success");
                 document.getElementById('signingActionBox').style.display = 'none';
@@ -4225,12 +4141,15 @@
             }
 
             const contract = currentSigningContract;
-            const filename = contract 
+            const filename = contract
                 ? ((contract.number || 'contrat') + '_' + (contract.closeuse_name || 'signe').replace(/\s+/g, '_') + '_signe.pdf')
                 : 'contrat_signe.pdf';
 
-            // Capturer l'élément VISIBLE (même rendu que le lien de signature)
-            generateContractPDF(null, filename, null, null, paper);
+            const closeuseSig = (contract && (contract.closeuse_signature || contract.closeuseSignature)) || null;
+            const companySig = (contract && (contract.company_signature || contract.companySignature)) || null;
+
+            // Utilise le HTML visible + signatures (format A4 navigateur)
+            generateContractPDF(paper.innerHTML, filename, closeuseSig, companySig, null);
         }
 
         // Envoi d'email via Edge Function Supabase (fiable)
